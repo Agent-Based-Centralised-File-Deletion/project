@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Verification - File Deletion System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-shield-alt me-2"></i>
+                File Deletion Admin
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/verification">
+                            <i class="fas fa-check-circle me-1"></i>Verification
+                        </a>
+                    </li>
+                </ul>
+                <button class="theme-toggle ms-3" id="theme-toggle" title="Toggle Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- Header -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h1 class="display-4 text-center mb-3">
+                    <i class="fas fa-search me-3"></i>
+                    File Verification
+                </h1>
+                <p class="lead text-center text-muted">Review and approve file deletion requests from lab agents</p>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="search-container">
+                    <h5 class="mb-3">
+                        <i class="fas fa-filter me-2"></i>
+                        Search & Filter Files
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" class="form-control form-control-lg" id="search-input"
+                                   placeholder="Search by filename or path...">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-primary btn-lg me-2" onclick="searchFiles()">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                            <button class="btn btn-outline-secondary btn-lg" onclick="clearSearch()">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt me-2"></i>
+                            Pending Files for Deletion
+                        </h5>
+                        <div>
+                            <button class="btn btn-success me-2" onclick="approveSelected()">
+                                <i class="fas fa-check me-1"></i>Approve Selected
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectSelected()">
+                                <i class="fas fa-times me-1"></i>Reject Selected
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="files-loading" class="text-center py-4">
+                            <div class="loading-spinner me-2"></div>
+                            Loading files...
+                        </div>
+                        <div id="files-container" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th width="50">
+                                                <input type="checkbox" id="select-all" class="form-check-input">
+                                            </th>
+                                            <th><i class="fas fa-file me-1"></i>Filename</th>
+                                            <th><i class="fas fa-folder me-1"></i>Path</th>
+                                            <th><i class="fas fa-server me-1"></i>Agent IP</th>
+                                            <th><i class="fas fa-calendar me-1"></i>Created</th>
+                                            <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="files-table">
+                                        <!-- Files will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="no-files-message" class="text-center py-5 text-muted" style="display: none;">
+                            <i class="fas fa-inbox fa-4x mb-3 text-muted"></i>
+                            <h4>No Pending Files</h4>
+                            <p>All files have been processed or no files are waiting for approval.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Summary -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Quick Actions
+                        </h6>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-primary w-100" onclick="selectAll()">
+                                    <i class="fas fa-check-square me-1"></i>
+                                    Select All
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-secondary w-100" onclick="deselectAll()">
+                                    <i class="fas fa-square me-1"></i>
+                                    Deselect All
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="d-block">
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    <strong id="selected-count">0</strong> selected
+                                </span>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="/" class="btn btn-outline-dark w-100">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-5 py-4">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-copyright me-1"></i>
+                2026 Agent-Based File Deletion System - Admin Interface
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentSearch = '';
+        let allFiles = [];
+
+        function loadFiles(search = '') {
+            const loading = document.getElementById('files-loading');
+            const container = document.getElementById('files-container');
+            const noFilesMsg = document.getElementById('no-files-message');
+
+            loading.style.display = 'block';
+            container.style.display = 'none';
+            noFilesMsg.style.display = 'none';
+
+            const url = search ? `/files-preview?search=${encodeURIComponent(search)}` : '/files-preview';
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+
+                    if (data.error) {
+                        console.error('Error loading files:', data.error);
+                        showAlert('Error loading files: ' + data.error, 'danger');
+                        noFilesMsg.style.display = 'block';
+                        return;
+                    }
+
+                    allFiles = data;
+                    updateSelectedCount();
+                    renderFiles(data);
+                    container.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading files:', error);
+                    loading.style.display = 'none';
+                    noFilesMsg.style.display = 'block';
+                    showAlert('Failed to load files. Please try again.', 'danger');
+                });
+        }
+
+        function renderFiles(files) {
+            const tbody = document.getElementById('files-table');
+            const noFilesMsg = document.getElementById('no-files-message');
+            const container = document.getElementById('files-container');
+
+            tbody.innerHTML = '';
+
+            if (files.length === 0) {
+                container.style.display = 'none';
+                noFilesMsg.style.display = 'block';
+                return;
+            }
+
+            noFilesMsg.style.display = 'none';
+            container.style.display = 'block';
+
+            files.forEach((file, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'fade-in';
+                tr.style.animationDelay = `${index * 0.05}s`;
+
+                const createdDate = file.created_at ? new Date(file.created_at).toLocaleString() : 'N/A';
+                const statusClass = `status-${file.status}`;
+
+                tr.innerHTML = `
+                    <td>
+                        <input type="checkbox" class="file-checkbox form-check-input" value="${file.id}">
+                    </td>
+                    <td>
+                        <strong>${file.filename}</strong>
+                    </td>
+                    <td>
+                        <small class="text-muted">${file.path}</small>
+                    </td>
+                    <td>
+                        <code>${file.agent_ip}</code>
+                    </td>
+                    <td>
+                        <small>${createdDate}</small>
+                    </td>
+                    <td>
+                        <span class="badge ${statusClass} status-badge">
+                            <i class="fas fa-clock me-1"></i>${file.status.toUpperCase()}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updateSelectAllCheckbox();
+        }
+
+        function updateSelectAllCheckbox() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            const selectAll = document.getElementById('select-all');
+            const checkedBoxes = document.querySelectorAll('.file-checkbox:checked');
+
+            selectAll.checked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
+            selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+        }
+
+        function updateSelectedCount() {
+            const count = document.querySelectorAll('.file-checkbox:checked').length;
+            document.getElementById('selected-count').textContent = count;
+        }
+
+        document.getElementById('select-all').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateSelectedCount();
+        });
+
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('file-checkbox')) {
+                updateSelectAllCheckbox();
+                updateSelectedCount();
+            }
+        });
+
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            checkboxes.forEach(cb => cb.checked = true);
+            updateSelectAllCheckbox();
+            updateSelectedCount();
+        }
+
+        function deselectAll() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSelectAllCheckbox();
+            updateSelectedCount();
+        }
+
+        function searchFiles() {
+            currentSearch = document.getElementById('search-input').value.trim();
+            loadFiles(currentSearch);
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            currentSearch = '';
+            loadFiles();
+        }
+
+        function getSelectedFileIds() {
+            return Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => parseInt(cb.value));
+        }
+
+        function approveSelected() {
+            const selectedIds = getSelectedFileIds();
+            if (selectedIds.length === 0) {
+                showAlert('Please select at least one file to approve', 'warning');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to approve deletion of ${selectedIds.length} file(s)?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            processAction('approve', selectedIds);
+        }
+
+        function rejectSelected() {
+            const selectedIds = getSelectedFileIds();
+            if (selectedIds.length === 0) {
+                showAlert('Please select at least one file to reject', 'warning');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to reject deletion of ${selectedIds.length} file(s)?\n\nThe files will remain on the agents.`)) {
+                return;
+            }
+
+            processAction('reject', selectedIds);
+        }
+
+        function processAction(action, fileIds) {
+            const endpoint = action === 'approve' ? '/approve-deletion' : '/reject-deletion';
+            const actionText = action === 'approve' ? 'approving' : 'rejecting';
+
+            // Disable buttons during processing
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_ids: fileIds }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                buttons.forEach(btn => btn.disabled = false);
+
+                if (data.error) {
+                    showAlert(`Error ${actionText} files: ${data.error}`, 'danger');
+                } else {
+                    showAlert(data.message, 'success');
+                    loadFiles(currentSearch);
+                }
+            })
+            .catch(error => {
+                console.error(`Error ${actionText} files:`, error);
+                buttons.forEach(btn => btn.disabled = false);
+                showAlert(`An error occurred while ${actionText} the files`, 'danger');
+            });
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible alert-custom fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Search on Enter key
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchFiles();
+            }
+        });
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = themeToggle.querySelector('i');
+
+        // Check for saved theme preference or default to light mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        }
+
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+
+            // Update icon
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        // Auto-refresh every 60 seconds
+        setInterval(() => loadFiles(currentSearch), 60000);
+
+        window.onload = () => loadFiles();
+    </script>
+</body>
+</html>
