@@ -59,6 +59,3 @@ class ResultCollector:
         """
         self._results.pop(task_id, None)
         self._verification_queue.clear_task(task_id)
-
-
-result_collector = ResultCollector()

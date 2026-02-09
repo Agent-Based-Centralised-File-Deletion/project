@@ -1,6 +1,8 @@
+# backend/network/tcp_server.py
+
 import socket
 import threading
-from network.connection_handler import handle_agent
+from .connection_handler import handle_agent
 
 HOST = "0.0.0.0"
 PORT = 5000
@@ -16,8 +18,12 @@ def start_master():
 
     while True:
         conn, addr = server_socket.accept()
-        threading.Thread(
+        thread = threading.Thread(
             target=handle_agent,
             args=(conn, addr),
             daemon=True
-        ).start()
+        )
+        thread.start()
+
+
+

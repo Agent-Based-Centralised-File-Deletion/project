@@ -4,10 +4,10 @@ import logging
 
 # Configuration
 CONFIG = {
-    'MASTER_IP': os.getenv('MASTER_IP', '192.168.128.42'),
+    'MASTER_IP': os.getenv('MASTER_IP', '192.168.128.'),
     'MASTER_PORT': int(os.getenv('MASTER_PORT', 5000)),
     'CLIENT_ID': os.getenv('CLIENT_ID', socket.gethostname()),
-    'SCAN_DIRECTORIES': os.getenv('SCAN_DIRS', r'C:\Users\user\Downloads').split(','),
+    'SCAN_DIRECTORIES': os.getenv('SCAN_DIRS', '/workspace,/home').split(','),
     'QUARANTINE_DIR': os.getenv('QUARANTINE_DIR', '/quarantine'),
     'LOG_DIR': os.getenv('LOG_DIR', '/logs'),
     'HEARTBEAT_INTERVAL': 30,  # seconds

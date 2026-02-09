@@ -34,22 +34,12 @@ def handle_agent(conn, addr):
             msg_type = message.get("type")
 
             if msg_type == "scan_result":
-                task_id = message.get("task_id")
-                files = message.get("files", [])
-
-                result_collector.add_scan_result(
-                    agent_ip=agent_ip,
-                    task_id=task_id,
-                    files=files
-                )
-
                 update_status(agent_ip, "AWAITING_APPROVAL")
-
-                print(f"[MASTER] Scan result received from {agent_ip}")
-                print(f"[MASTER] Task: {task_id}, Files: {len(files)}")
+                print(f"[MASTER] Scan result from {agent_ip}")
+                print(message)
 
             elif msg_type == "heartbeat":
-                pass  
+                pass  # handled by touch()
 
     except Exception as e:
         print(f"[MASTER] Error [{agent_ip}]: {e}")

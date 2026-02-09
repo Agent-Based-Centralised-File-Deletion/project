@@ -61,4 +61,3 @@ class ResultCollector:
         self._verification_queue.clear_task(task_id)
 
 
-result_collector = ResultCollector()
