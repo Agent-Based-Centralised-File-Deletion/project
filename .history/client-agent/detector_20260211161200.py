@@ -171,73 +171,7 @@ class PatternBasedDetector:
         'html': ['.html', '.htm'],
         'css': ['.css', '.scss', '.sass', '.less']
     }
-
-    # Language-unique syntax indicators that are hard to fake accidentally.
-    SIGNATURE_PATTERNS = {
-        'python': [
-            r'^\s*def\s+\w+\s*\([^)]*\)\s*:',
-            r'^\s*from\s+[\w.]+\s+import\s+[\w.*,\s]+',
-            r'if\s+__name__\s*==\s*["\']__main__["\']',
-            r'^\s*except(\s+\w+(\s+as\s+\w+)?)?\s*:',
-        ],
-        'matlab': [
-            r'^\s*function\s+(\[[^\]]+\]|\w+)\s*=\s*\w+\s*\(',
-            r'^\s*end\s*$',
-            r'^\s*clc\s*;?\s*$',
-        ],
-        'perl': [
-            r'^\s*use\s+strict\s*;',
-            r'^\s*my\s+[\$@%]\w+',
-            r'^\s*sub\s+\w+\s*\{',
-        ],
-        'java': [
-            r'public\s+static\s+void\s+main\s*\(',
-            r'^\s*package\s+[\w.]+\s*;',
-            r'^\s*import\s+[\w.]+\s*;',
-            r'^\s*(public|private|protected)\s+class\s+\w+\s*\{',
-            r'System\.out\.(print|println)\s*\(',
-        ],
-        'javascript': [
-            r'^\s*(const|let|var)\s+\w+\s*=',
-            r'^\s*import\s+.+\s+from\s+["\']',
-            r'=>\s*\{',
-            r'console\.log\s*\(',
-        ],
-        'html': [
-            r'<!DOCTYPE\s+html>',
-            r'<html[^>]*>',
-            r'<body[^>]*>',
-        ],
-        'css': [
-            r'^\s*[\.\#]?\w[\w\-]*\s*\{',
-            r'^\s*@media\s+',
-            r'^\s*[\w\-]+\s*:\s*[^;]+;',
-        ]
-    }
-
-    # Control-flow tokens are shared by many languages and should have low influence.
-    COMMON_KEYWORDS = {
-        'if', 'else', 'for', 'while', 'return', 'try', 'catch', 'case',
-        'switch', 'break', 'continue', 'class', 'import'
-    }
     
-    @staticmethod
-    def _pattern_weight(description: str) -> float:
-        """Return score weight for a matched pattern."""
-        desc = description.lower()
-        if 'comment' in desc:
-            return 0.4
-        if 'function' in desc or 'class' in desc or 'main' in desc:
-            return 2.2
-        if 'import' in desc or 'package' in desc or 'annotation' in desc:
-            return 1.8
-        return 1.2
-
-    @staticmethod
-    def _keyword_weight(keyword: str) -> float:
-        """Lower weight for cross-language keywords to reduce false positives."""
-        return 0.25 if keyword in PatternBasedDetector.COMMON_KEYWORDS else 1.0
-
     @staticmethod
     def is_binary(filepath: str, sample_size: int = 8192) -> bool:
         """Check if file is binary"""
@@ -321,7 +255,7 @@ class PatternBasedDetector:
                 for pattern, description in patterns:
                     found = re.findall(pattern, content, re.MULTILINE)
                     if found:
-                        score += len(found) * PatternBasedDetector._pattern_weight(description)
+                        score += len(found) * 2
                         matches.append(f"{description} ({len(found)}x)")
                 
                 # Check keywords
@@ -329,14 +263,7 @@ class PatternBasedDetector:
                     regex = re.compile(r'\b' + re.escape(keyword) + r'\b')
                     found = regex.findall(content)
                     if found:
-                        score += min(len(found), 8) * PatternBasedDetector._keyword_weight(keyword)
-
-                # Strong language-unique signatures.
-                signature_hits = 0
-                for sig_pattern in PatternBasedDetector.SIGNATURE_PATTERNS.get(lang, []):
-                    if re.search(sig_pattern, content, re.MULTILINE):
-                        signature_hits += 1
-                score += signature_hits * 4
+                        score += len(found)
                 
                 # Bonus for code structure
                 if re.search(r'^[ \t]+\w', content, re.MULTILINE):
@@ -355,19 +282,15 @@ class PatternBasedDetector:
                 detected_lang = max(scores, key=scores.get)
                 max_score = scores[detected_lang]
             
-            sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-            second_best_score = sorted_scores[1][1] if len(sorted_scores) > 1 else 0
-            score_margin = max_score - second_best_score
-
-            # Confidence combines absolute evidence and separation from the next-best language.
-            confidence = min(1.0, ((max_score / 40.0) * 0.7) + ((score_margin / 20.0) * 0.3))
             
-            # Small confidence boost for matching extension (weak signal only).
+            confidence = min(max_score / 30.0, 1.0)
+            
+            # Boost confidence if extension matches
             if extension_lang == detected_lang:
-                confidence = min(confidence + 0.08, 1.0)
+                confidence = min(confidence * 1.3, 1.0)
             
             # Make decision
-            if confidence > 0.78 and score_margin >= 4:
+            if confidence > 0.75:
                 decision = 'delete'
                 reason = f"High confidence {detected_lang} code: {', '.join(pattern_matches[detected_lang][:3])}"
             elif confidence < 0.25:

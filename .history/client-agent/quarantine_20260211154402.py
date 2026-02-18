@@ -26,7 +26,7 @@ class QuarantineManager:
            
             os.makedirs(os.path.dirname(quarantine_path), exist_ok=True)
             
-           
+            # Move file
             shutil.move(filepath, quarantine_path)
             logger.info(f"Quarantined: {filepath} -> {quarantine_path}")
             

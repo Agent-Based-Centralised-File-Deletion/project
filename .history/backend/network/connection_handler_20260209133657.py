@@ -33,7 +33,7 @@ def handle_agent(conn, addr):
             touch(agent_ip)
             msg_type = message.get("type")
 
-            if msg_type in ("scan_result", "scan_results"):
+            if msg_type == "scan_result":
                 task_id = message.get("task_id")
                 files = message.get("files", [])
 

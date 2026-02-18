@@ -23,10 +23,10 @@ class QuarantineManager:
             rel_path = os.path.relpath(filepath, '/')
             quarantine_path = os.path.join(self.quarantine_dir, rel_path)
             
-           
+            # Create parent directories
             os.makedirs(os.path.dirname(quarantine_path), exist_ok=True)
             
-           
+            # Move file
             shutil.move(filepath, quarantine_path)
             logger.info(f"Quarantined: {filepath} -> {quarantine_path}")
             

@@ -5,14 +5,13 @@ from orchestrator.agent_registry import (
     update_status,
     touch
 )
-from orchestrator.task_dispatcher import dispatch_scan_task
 from orchestrator.result_collector import result_collector
 
 def handle_agent(conn, addr):
     agent_ip, _ = addr
 
     try:
-        # Receive and validate registration
+        # Registration
         registration = receive_message(conn)
         if not registration or registration.get("type") != "register":
             raise Exception("Invalid registration message")
@@ -20,20 +19,17 @@ def handle_agent(conn, addr):
         register_agent(agent_ip, conn, addr)
         print(f"[MASTER] Agent registered: {agent_ip}")
 
-        # Dispatch initial task after registration
-        dispatch_scan_task(conn, agent_ip)
-
-        # Listen for incoming messages
+        # Main receive loop
         while True:
             message = receive_message(conn)
-            if message is None:
-                print(f"[MASTER] No message received, closing connection for {agent_ip}")
+            if not message:
                 break
 
             touch(agent_ip)
+
             msg_type = message.get("type")
 
-            if msg_type in ("scan_result", "scan_results"):
+            if msg_type == "scan_result":
                 task_id = message.get("task_id")
                 files = message.get("files", [])
 
@@ -49,19 +45,11 @@ def handle_agent(conn, addr):
                 print(f"[MASTER] Task: {task_id}, Files: {len(files)}")
 
             elif msg_type == "heartbeat":
-                # Keep-alive; no action required
                 pass
-
-            else:
-                print(f"[MASTER] Unknown message type from {agent_ip}: {msg_type}")
 
     except Exception as e:
         print(f"[MASTER] Error [{agent_ip}]: {e}")
 
     finally:
         remove_agent(agent_ip)
-        try:
-            conn.close()
-        except Exception:
-            pass
         print(f"[MASTER] Agent disconnected: {agent_ip}")

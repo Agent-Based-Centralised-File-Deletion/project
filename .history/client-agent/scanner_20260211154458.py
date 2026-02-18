@@ -45,7 +45,7 @@ class FileScanner:
                             if not any(filename.endswith(ext) for ext in file_extensions):
                                 continue
                         
-                       
+                        # Filter by date if specified
                         if date_filter:
                             try:
                                 mtime = datetime.fromtimestamp(os.path.getmtime(filepath))

@@ -1,14 +1,6 @@
 import json
 import socket
 
-def send_message(conn, message: dict):
-    try:
-        data = json.dumps(message).encode()
-        length = len(data).to_bytes(4, "big")
-        conn.sendall(length + data)
-    except socket.error as e:
-        print("[MASTER] Protocol send error:", e)
-
 
 def receive_message(conn):
     try:

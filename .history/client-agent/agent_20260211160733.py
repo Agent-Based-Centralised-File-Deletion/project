@@ -104,21 +104,16 @@ class ClientAgent:
         for filepath in files:
             result = self.detector.analyze_file(filepath)
             
-            # Only quarantine files whose detected language is in the target set.
-            # This prevents non-target-language files from being quarantined.
-            is_target_language = result.language in target_languages
-            should_quarantine = (
-                (result.decision == 'delete' and is_target_language) or
-                (result.decision == 'ambiguous' and is_target_language and result.confidence >= 0.70)
-            )
-
-            if should_quarantine:
-                success, quarantine_path = self.quarantine.quarantine_file(filepath)
-                if success:
-                    result.filepath = quarantine_path  # Update to quarantine path
-                    results.append(result)
-                else:
-                    logger.error(f"Failed to quarantine: {filepath}")
+            # Filter by target language
+            if result.language in target_languages or result.decision == 'ambiguous':
+                # Quarantine files marked for deletion or ambiguous
+                if result.decision in ['delete', 'ambiguous']:
+                    success, quarantine_path = self.quarantine.quarantine_file(filepath)
+                    if success:
+                        result.filepath = quarantine_path  # Update to quarantine path
+                        results.append(result)
+                    else:
+                        logger.error(f"Failed to quarantine: {filepath}")
         
         # Send results to master
         if results:

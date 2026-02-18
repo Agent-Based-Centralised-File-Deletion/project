@@ -40,12 +40,12 @@ class FileScanner:
                         if not os.access(filepath, os.R_OK):
                             continue
                         
-                        
+                        # Filter by extension if specified
                         if file_extensions:
                             if not any(filename.endswith(ext) for ext in file_extensions):
                                 continue
                         
-                       
+                        # Filter by date if specified
                         if date_filter:
                             try:
                                 mtime = datetime.fromtimestamp(os.path.getmtime(filepath))

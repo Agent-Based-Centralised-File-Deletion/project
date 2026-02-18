@@ -10,8 +10,8 @@ CONFIG = {
     'SCAN_DIRECTORIES': os.getenv('SCAN_DIRS', r'C:\Users\user\Downloads\Network_Test_Run').split(','),
     'QUARANTINE_DIR': os.getenv('QUARANTINE_DIR', '/quarantine'),
     'LOG_DIR': os.getenv('LOG_DIR', '/logs'),
-    'HEARTBEAT_INTERVAL': 30,  
-    'RECONNECT_DELAY': 10,  
+    'HEARTBEAT_INTERVAL': 30,  # seconds
+    'RECONNECT_DELAY': 10,  # seconds
 }
 
 # Setup logging

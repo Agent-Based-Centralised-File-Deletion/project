@@ -34,6 +34,7 @@ def handle_agent(conn, addr):
             msg_type = message.get("type")
 
             if msg_type in ("scan_result", "scan_results"):
+
                 task_id = message.get("task_id")
                 files = message.get("files", [])
 
