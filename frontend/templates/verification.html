@@ -111,6 +111,9 @@
                                             <th><i class="fas fa-file me-1"></i>Filename</th>
                                             <th><i class="fas fa-folder me-1"></i>Path</th>
                                             <th><i class="fas fa-server me-1"></i>Agent IP</th>
+                                            <th><i class="fas fa-code me-1"></i>Language</th>
+                                            <th><i class="fas fa-gauge me-1"></i>Confidence</th>
+                                            <th><i class="fas fa-note-sticky me-1"></i>Reason</th>
                                             <th><i class="fas fa-calendar me-1"></i>Created</th>
                                             <th><i class="fas fa-info-circle me-1"></i>Status</th>
                                         </tr>
@@ -170,6 +173,39 @@
                 </div>
             </div>
         </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Recent Audit Logs
+                        </h5>
+                        <button class="btn btn-outline-light btn-sm" onclick="loadAuditLogs()">
+                            <i class="fas fa-rotate me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Action</th>
+                                        <th>Filename</th>
+                                        <th>Agent</th>
+                                        <th>Task</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -186,6 +222,7 @@
     <script>
         let currentSearch = '';
         let allFiles = [];
+        let auditLogs = [];
 
         function loadFiles(search = '') {
             const loading = document.getElementById('files-loading');
@@ -260,6 +297,15 @@
                         <code>${file.agent_ip}</code>
                     </td>
                     <td>
+                        <span class="badge bg-info text-dark">${(file.language || 'unknown').toUpperCase()}</span>
+                    </td>
+                    <td>
+                        <small>${typeof file.confidence === 'number' ? file.confidence.toFixed(2) : 'N/A'}</small>
+                    </td>
+                    <td title="${file.reason || ''}">
+                        <small class="text-muted">${(file.reason || '').slice(0, 90)}</small>
+                    </td>
+                    <td>
                         <small>${createdDate}</small>
                     </td>
                     <td>
@@ -327,7 +373,7 @@
         }
 
         function getSelectedFileIds() {
-            return Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => parseInt(cb.value));
+            return Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => cb.value);
         }
 
         function approveSelected() {
@@ -382,6 +428,7 @@
                 } else {
                     showAlert(data.message, 'success');
                     loadFiles(currentSearch);
+                    loadAuditLogs();
                 }
             })
             .catch(error => {
@@ -406,6 +453,46 @@
                     alertDiv.remove();
                 }
             }, 5000);
+        }
+
+        function loadAuditLogs() {
+            fetch('/audit-logs?limit=100')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error loading audit logs:', data.error);
+                        return;
+                    }
+                    auditLogs = data;
+                    renderAuditLogs(data);
+                })
+                .catch(error => {
+                    console.error('Error loading audit logs:', error);
+                });
+        }
+
+        function renderAuditLogs(logs) {
+            const tbody = document.getElementById('audit-table');
+            tbody.innerHTML = '';
+
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No audit records yet.</td></tr>';
+                return;
+            }
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                const ts = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
+                tr.innerHTML = `
+                    <td><small>${ts}</small></td>
+                    <td><span class="badge bg-secondary">${(log.action || 'unknown').toUpperCase()}</span></td>
+                    <td>${log.filename || 'N/A'}</td>
+                    <td><code>${log.agent_ip || 'N/A'}</code></td>
+                    <td><small>${log.task_id || 'N/A'}</small></td>
+                    <td><small class="text-muted">${log.notes || ''}</small></td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         // Search on Enter key
@@ -444,9 +531,15 @@
         });
 
         // Auto-refresh every 60 seconds
-        setInterval(() => loadFiles(currentSearch), 60000);
+        setInterval(() => {
+            loadFiles(currentSearch);
+            loadAuditLogs();
+        }, 60000);
 
-        window.onload = () => loadFiles();
+        window.onload = () => {
+            loadFiles();
+            loadAuditLogs();
+        };
     </script>
 </body>
 </html>

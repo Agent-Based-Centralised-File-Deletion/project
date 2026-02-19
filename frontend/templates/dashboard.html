@@ -218,7 +218,7 @@
                         <td>${agent.id}</td>
                         <td>${agent.name}</td>
                         <td><i class="fas ${statusIcon} ${statusClass} me-1"></i>${agent.status}</td>
-                        <td>${new Date(agent.last_seen).toLocaleString()}</td>
+                        <td>${agent.last_seen ? new Date(agent.last_seen).toLocaleString() : 'Never'}</td>
                         <td>${agent.ip_address}</td>
                     </tr>
                 `;
@@ -254,14 +254,14 @@
             `;
 
             files.forEach(file => {
-                const statusClass = file.status === 'pending' ? 'text-warning' : 'text-secondary';
+                const statusClass = file.status === 'pending' ? 'warning' : 'secondary';
 
                 html += `
                     <tr>
                         <td>${file.id}</td>
-                        <td>${file.agent_id}</td>
-                        <td><code>${file.file_path}</code></td>
-                        <td><span class="badge bg-${statusClass === 'text-warning' ? 'warning' : 'secondary'}">${file.status}</span></td>
+                        <td><code>${file.agent_ip || 'N/A'}</code></td>
+                        <td><code>${file.path || 'N/A'}</code></td>
+                        <td><span class="badge bg-${statusClass}">${file.status}</span></td>
                         <td>${new Date(file.created_at).toLocaleString()}</td>
                     </tr>
                 `;

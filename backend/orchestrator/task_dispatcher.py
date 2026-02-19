@@ -1,5 +1,9 @@
-from network.protocol import send_message
-from orchestrator.agent_registry import update_status
+try:
+    from backend.network.protocol import send_message
+    from backend.orchestrator.agent_registry import update_status
+except ModuleNotFoundError:
+    from network.protocol import send_message
+    from orchestrator.agent_registry import update_status
 
 
 def dispatch_scan_task(conn, agent_ip):

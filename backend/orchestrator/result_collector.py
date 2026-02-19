@@ -1,5 +1,11 @@
 from collections import defaultdict
-from api.verification import VerificationQueue
+
+try:
+    # Works when imported as part of the backend package (e.g., from frontend/app.py).
+    from backend.api.verification import VerificationQueue
+except ModuleNotFoundError:
+    # Fallback for legacy execution contexts inside backend/ package root.
+    from api.verification import VerificationQueue
 
 
 class ResultCollector:

@@ -91,16 +91,20 @@ class MasterCommunicator:
             self.connected = False
             return None
     
-    def send_scan_results(self, results: List[FileAnalysisResult]):
+    def send_scan_results(self, task_id: str, results: List[FileAnalysisResult]):
         """Send scan results to master"""
+        serialized = [asdict(r) for r in results]
         message = {
             'type': 'scan_results',
+            'task_id': task_id,
             'client_id': self.client_id,
             'timestamp': datetime.now().isoformat(),
-            'results': [asdict(r) for r in results]
+            'files': serialized,
+            # Backward-compatibility for older consumers
+            'results': serialized
         }
         self._send_message(message)
-        logger.info(f"Sent {len(results)} scan results to master")
+        logger.info(f"Sent {len(results)} scan results to master for task {task_id}")
     
     def send_heartbeat(self):
         """Send heartbeat to master"""
@@ -110,3 +114,15 @@ class MasterCommunicator:
             'timestamp': datetime.now().isoformat()
         }
         self._send_message(message)
+
+    def send_deletion_report(self, task_id: str, reports: list):
+        """Send deletion outcome report to master."""
+        message = {
+            'type': 'deletion_report',
+            'task_id': task_id,
+            'client_id': self.client_id,
+            'timestamp': datetime.now().isoformat(),
+            'reports': reports,
+        }
+        self._send_message(message)
+        logger.info(f"Sent deletion report with {len(reports)} entries for task {task_id}")

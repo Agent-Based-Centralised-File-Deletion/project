@@ -19,3 +19,21 @@ class FileLog(db.Model):
     approved_at = db.Column(db.DateTime, nullable=True)
 
     agent = db.relationship('Agent', backref=db.backref('files', lazy=True))
+
+
+class DeletionAuditLog(db.Model):
+    __tablename__ = "deletion_audit_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    record_id = db.Column(db.String(255), nullable=False, index=True)
+    task_id = db.Column(db.String(100), nullable=True, index=True)
+    agent_ip = db.Column(db.String(64), nullable=True, index=True)
+    file_hash = db.Column(db.String(128), nullable=True, index=True)
+    filename = db.Column(db.String(255), nullable=False)
+    path = db.Column(db.String(1000), nullable=False)
+    language = db.Column(db.String(64), nullable=True)
+    confidence = db.Column(db.Float, nullable=True)
+    action = db.Column(db.String(64), nullable=False)  # approved, rejected, delete_dispatched
+    action_by = db.Column(db.String(128), nullable=False, default="admin-ui")
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)

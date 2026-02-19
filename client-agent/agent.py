@@ -122,26 +122,67 @@ class ClientAgent:
         
         # Send results to master
         if results:
-            self.communicator.send_scan_results(results)
+            task_id = str(task.get('task_id') or 'unknown-task')
+            self.communicator.send_scan_results(task_id, results)
         else:
             logger.info("No files found matching criteria")
     
     def _execute_deletion(self, message: dict):
         """Execute approved file deletions"""
+        task_id = str(message.get('task_id') or 'unknown-task')
+        approved_entries = message.get('approved_entries')
         approved_hashes = message.get('approved_hashes', [])
-        logger.info(f"Deleting {len(approved_hashes)} approved files")
-        
-        deleted_count = 0
-        for file_hash in approved_hashes:
-            for root, _, files in os.walk(self.config['QUARANTINE_DIR']):
-                for filename in files:
-                    filepath = os.path.join(root, filename)
-                    if self.detector._calculate_hash(filepath) == file_hash:
-                        if self.quarantine.delete_quarantined(filepath):
-                            deleted_count += 1
+
+        if not approved_entries:
+            approved_entries = [{'file_hash': h} for h in approved_hashes]
+
+        logger.info(f"Deleting {len(approved_entries)} approved files for task {task_id}")
+
+        reports = []
+
+        for entry in approved_entries:
+            file_hash = (entry or {}).get('file_hash', '')
+            hint_path = (entry or {}).get('path', '')
+            deleted = False
+            deleted_path = ''
+            details = ''
+
+            # First, try hash-based lookup in quarantine.
+            if file_hash:
+                for root, _, files in os.walk(self.config['QUARANTINE_DIR']):
+                    for filename in files:
+                        filepath = os.path.join(root, filename)
+                        if self.detector._calculate_hash(filepath) == file_hash:
+                            deleted = self.quarantine.delete_quarantined(filepath)
+                            deleted_path = filepath
+                            details = 'deleted by hash' if deleted else 'hash found but delete failed'
+                            break
+                    if deleted or details:
                         break
-        
-        logger.info(f"Deleted {deleted_count} files")
+
+            # Fallback: direct path delete if provided and still exists.
+            if not deleted and hint_path and os.path.exists(hint_path):
+                deleted = self.quarantine.delete_quarantined(hint_path)
+                deleted_path = hint_path
+                details = 'deleted by path fallback' if deleted else 'path found but delete failed'
+
+            if not deleted and not details:
+                details = 'file not found in quarantine'
+
+            reports.append({
+                'file_hash': file_hash,
+                'path': deleted_path or hint_path,
+                'status': 'deleted' if deleted else 'failed',
+                'details': details,
+            })
+
+        deleted_count = sum(1 for r in reports if r['status'] == 'deleted')
+        logger.info(f"Deleted {deleted_count}/{len(reports)} files for task {task_id}")
+
+        try:
+            self.communicator.send_deletion_report(task_id, reports)
+        except Exception as e:
+            logger.error(f"Failed to send deletion report: {e}")
     
     def _restore_file(self, message: dict):
         """Restore file from quarantine"""

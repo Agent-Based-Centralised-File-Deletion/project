@@ -1,6 +1,9 @@
 import socket
 import threading
-from network.connection_handler import handle_agent
+try:
+    from backend.network.connection_handler import handle_agent
+except ModuleNotFoundError:
+    from network.connection_handler import handle_agent
 
 HOST = "0.0.0.0"
 PORT = 5000
