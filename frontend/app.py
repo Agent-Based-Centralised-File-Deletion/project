@@ -18,6 +18,7 @@ from backend.network.protocol import send_message
 from backend.network.tcp_server import start_master
 from models import db, DeletionAuditLog
 from shared import persistence
+from shared.constants import HEARTBEAT_TIMEOUT
 
 
 app = Flask(__name__)
@@ -32,6 +33,7 @@ persistence.init_db()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 _MASTER_THREAD_STARTED = False
+AGENT_STALE_SECONDS = int(os.getenv("AGENT_STALE_SECONDS", max(HEARTBEAT_TIMEOUT * 2, 1)))
 
 
 def _start_master_thread_if_enabled():
@@ -51,6 +53,17 @@ def _start_master_thread_if_enabled():
 
 def _now_iso() -> str:
     return datetime.now().astimezone().isoformat()
+
+
+def _is_online(raw_status: str, last_seen_ts, now_ts: float) -> bool:
+    if str(raw_status).upper() == "OFFLINE":
+        return False
+    if not last_seen_ts:
+        return False
+    try:
+        return (now_ts - float(last_seen_ts)) <= AGENT_STALE_SECONDS
+    except (TypeError, ValueError):
+        return False
 
 
 def _infer_languages_from_instruction(instruction: str):
@@ -180,6 +193,7 @@ def submit_instruction():
 def clients_status():
     try:
         status_list = []
+        now_ts = datetime.now(tz=timezone.utc).timestamp()
 
         for idx, item in enumerate(persistence.list_agents(), start=1):
             agent_ip = item.get("agent_ip")
@@ -188,14 +202,20 @@ def clients_status():
             last_seen = None
             if last_seen_ts:
                 last_seen = datetime.fromtimestamp(last_seen_ts, tz=timezone.utc).isoformat()
+            online = _is_online(raw_status, last_seen_ts, now_ts)
+            normalized_raw_status = raw_status if online else "OFFLINE"
+
+            # Keep persisted status aligned for stale agents without rewriting last_seen.
+            if not online and str(raw_status).upper() != "OFFLINE":
+                persistence.update_agent_status(agent_ip, "OFFLINE")
 
             status_list.append({
                 "id": idx,
                 "name": f"Agent {idx}",
                 "ip": agent_ip,
                 "ip_address": agent_ip,
-                "status": "online" if raw_status != "OFFLINE" else "offline",
-                "raw_status": raw_status,
+                "status": "online" if online else "offline",
+                "raw_status": normalized_raw_status,
                 "last_seen": last_seen
             })
 

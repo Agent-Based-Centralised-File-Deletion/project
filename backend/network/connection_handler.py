@@ -1,3 +1,6 @@
+import os
+import sys
+
 try:
     from backend.network.protocol import receive_message, send_message
     from backend.orchestrator.agent_registry import (
@@ -10,6 +13,9 @@ try:
     from backend.orchestrator.result_collector import result_collector
     from shared import persistence
 except ModuleNotFoundError:
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if PROJECT_ROOT not in sys.path:
+        sys.path.insert(0, PROJECT_ROOT)
     from network.protocol import receive_message, send_message
     from orchestrator.agent_registry import (
         register_agent,
@@ -19,7 +25,10 @@ except ModuleNotFoundError:
     )
     from orchestrator.task_dispatcher import dispatch_scan_task
     from orchestrator.result_collector import result_collector
-    persistence = None
+    try:
+        from shared import persistence
+    except ModuleNotFoundError:
+        persistence = None
 
 
 def _dispatch_queued_delete_commands(agent_ip, conn):

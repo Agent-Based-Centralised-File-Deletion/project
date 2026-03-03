@@ -124,6 +124,34 @@ def upsert_agent(agent_ip: str, status: str):
         conn.close()
 
 
+def update_agent_status(agent_ip: str, status: str):
+    """
+    Update status only while preserving last_seen.
+    If the row does not exist, create it with current timestamp.
+    """
+    with _LOCK:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE persisted_agents
+            SET status=?
+            WHERE agent_ip=?
+            """,
+            (status, agent_ip),
+        )
+        if cur.rowcount == 0:
+            cur.execute(
+                """
+                INSERT INTO persisted_agents(agent_ip, status, last_seen)
+                VALUES (?, ?, ?)
+                """,
+                (agent_ip, status, time.time()),
+            )
+        conn.commit()
+        conn.close()
+
+
 def touch_agent(agent_ip: str):
     with _LOCK:
         conn = _connect()
