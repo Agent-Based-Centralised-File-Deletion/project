@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5001:5000"  # Changed external port to 5001 to avoid conflict
+    volumes:
+      - ./frontend:/app
+      - ./backend:/app/backend  # Share backend directory with frontend
+      - ./shared:/app/shared  # Share shared directory with frontend
+      - ./backend/network:/app/network  # Share network directory with frontend
+    networks:
+      - app-network
+    environment:
+      - FLASK_RUN_PORT=5001  # Set Flask to use port 5001
+
+  client-agent:
+    build:
+      context: ./client-agent
+    networks:
+      - app-network
+    environment:
+      - BACKEND_HOST=backend  # Use backend service name as hostname
+      - BACKEND_PORT=8000
+
+networks:
+  app-network:
+    driver: bridge
