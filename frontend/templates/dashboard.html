@@ -7,6 +7,309 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .lab-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+
+        .lab-toolbar .form-select {
+            max-width: 280px;
+            border-radius: 14px;
+            padding: 0.7rem 1rem;
+            font-weight: 600;
+        }
+
+        .lab-layout-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .lab-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .lab-meta-badge {
+            border: 1px solid rgba(0,0,0,0.08);
+            background: rgba(255,255,255,0.9);
+            border-radius: 999px;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        body.dark-mode .lab-meta-badge {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.08);
+            color: #f1f3f5;
+        }
+
+        .lab-grid-card {
+            border-radius: 20px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,249,250,0.95));
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+
+        body.dark-mode .lab-grid-card {
+            background: linear-gradient(180deg, rgba(33,37,41,0.98), rgba(25,28,31,0.96));
+            border-color: rgba(255,255,255,0.08);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+
+        .lab-grid-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        body.dark-mode .lab-grid-header {
+            border-bottom-color: rgba(255,255,255,0.08);
+        }
+
+        .lab-grid-body {
+            padding: 1.25rem;
+            overflow-x: auto;
+        }
+
+        .lab-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 1200px;
+        }
+
+        .lab-row {
+            display: grid;
+            grid-template-columns: 88px repeat(23, minmax(86px, 1fr));
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .row-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            background: rgba(13, 110, 253, 0.08);
+            color: #0d6efd;
+            min-height: 98px;
+            text-align: center;
+            padding: 0.75rem;
+            border: 1px solid rgba(13, 110, 253, 0.15);
+        }
+
+        body.dark-mode .row-label {
+            background: rgba(13, 110, 253, 0.14);
+            border-color: rgba(13, 110, 253, 0.28);
+            color: #8cb9ff;
+        }
+
+        .pc-tile {
+            position: relative;
+            min-height: 98px;
+            border-radius: 18px;
+            padding: 0.65rem 0.5rem 0.55rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            text-align: center;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: #ffffff;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+        }
+
+        .pc-tile:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 24px rgba(0,0,0,0.10);
+        }
+
+        body.dark-mode .pc-tile {
+            background: rgba(255,255,255,0.04);
+            border-color: rgba(255,255,255,0.08);
+            box-shadow: none;
+        }
+
+        .pc-tile.online {
+            border-color: rgba(25, 135, 84, 0.25);
+            background: linear-gradient(180deg, rgba(25,135,84,0.08), rgba(25,135,84,0.03));
+        }
+
+        .pc-tile.offline {
+            border-color: rgba(220, 53, 69, 0.18);
+            background: linear-gradient(180deg, rgba(220,53,69,0.06), rgba(220,53,69,0.02));
+        }
+
+        .pc-tile .pc-icon {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+        }
+
+        .pc-tile .pc-icon-fallback {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13,110,253,0.08);
+            color: #0d6efd;
+            font-size: 1rem;
+        }
+
+        body.dark-mode .pc-tile .pc-icon-fallback {
+            background: rgba(13,110,253,0.18);
+            color: #8cb9ff;
+        }
+
+        .pc-ip {
+            font-size: 0.78rem;
+            line-height: 1.2;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .pc-name {
+            font-size: 0.7rem;
+            color: #6c757d;
+            line-height: 1.2;
+        }
+
+        body.dark-mode .pc-name {
+            color: #adb5bd;
+        }
+
+        .pc-status-dot {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        body.dark-mode .pc-status-dot {
+            border-color: #212529;
+        }
+
+        .pc-status-dot.online {
+            background: #198754;
+            box-shadow: 0 0 0 4px rgba(25,135,84,0.12);
+        }
+
+        .pc-status-dot.offline {
+            background: #dc3545;
+            box-shadow: 0 0 0 4px rgba(220,53,69,0.10);
+        }
+
+        .pc-status-text {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.18rem 0.55rem;
+            border-radius: 999px;
+        }
+
+        .pc-status-text.online {
+            background: rgba(25,135,84,0.12);
+            color: #198754;
+        }
+
+        .pc-status-text.offline {
+            background: rgba(220,53,69,0.10);
+            color: #dc3545;
+        }
+
+        .pc-gap {
+            min-height: 98px;
+            border-radius: 18px;
+            border: 1px dashed rgba(108,117,125,0.22);
+            background: repeating-linear-gradient(
+                135deg,
+                rgba(108,117,125,0.04),
+                rgba(108,117,125,0.04) 10px,
+                rgba(108,117,125,0.02) 10px,
+                rgba(108,117,125,0.02) 20px
+            );
+        }
+
+        body.dark-mode .pc-gap {
+            border-color: rgba(255,255,255,0.07);
+            background: repeating-linear-gradient(
+                135deg,
+                rgba(255,255,255,0.03),
+                rgba(255,255,255,0.03) 10px,
+                rgba(255,255,255,0.015) 10px,
+                rgba(255,255,255,0.015) 20px
+            );
+        }
+
+        .layout-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.online {
+            background: #198754;
+        }
+
+        .legend-dot.offline {
+            background: #dc3545;
+        }
+
+        .legend-box {
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+            border: 1px dashed rgba(108,117,125,0.45);
+            background: rgba(108,117,125,0.08);
+        }
+
+        @media (max-width: 768px) {
+            .lab-toolbar {
+                align-items: stretch;
+            }
+
+            .lab-toolbar .form-select {
+                max-width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -131,13 +434,32 @@
                         </h5>
                     </div>
                     <div class="card-body">
+                        <div class="lab-toolbar">
+                            <div>
+                                <label for="lab-selector" class="form-label mb-2 fw-semibold">
+                                    <i class="fas fa-layer-group me-2"></i>Select Section
+                                </label>
+                                <select id="lab-selector" class="form-select">
+                                    <option value="lab1">CSL 1 & 2</option>
+                                    <option value="lab2">CSL 3 & 4</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="lab-meta" id="lab-summary-meta">
+                                <!-- Dynamic meta info -->
+                            </div>
+                        </div>
+
                         <div id="agents-loading" class="text-center py-4">
                             <div class="loading-spinner me-2"></div>
                             Loading agents...
                         </div>
+
                         <div id="agents-container" class="row" style="display: none;">
-                            <!-- Agents will be loaded here -->
+                            <!-- Agents / Lab layout will be loaded here -->
                         </div>
+
                         <div id="no-agents" class="text-center py-4 text-muted" style="display: none;">
                             <i class="fas fa-server fa-3x mb-3"></i>
                             <p>No agents found in the system</p>
@@ -163,6 +485,35 @@
         let agentsData = [];
         let filesData = [];
 
+        const LAP_ICON_SRC = "lapIcon.png";
+
+        const LAB_LAYOUTS = {
+            lab1: {
+                key: 'lab1',
+                title: 'CSL 1 & 2',
+                subtitle: 'Lab 1 layout with 100 PCs',
+                rows: [
+                    ['10.20.9.101','10.20.9.102','10.20.9.103','10.20.9.104','10.20.9.105', null,'10.20.9.106','10.20.9.107','10.20.9.108','10.20.9.109','10.20.9.110', null,'10.20.9.151','10.20.9.152','10.20.9.153','10.20.9.154','10.20.9.155', null,'10.20.9.156','10.20.9.157','10.20.9.158','10.20.9.159','10.20.9.160'],
+                    ['10.20.9.111','10.20.9.112','10.20.9.113','10.20.9.114','10.20.9.115', null,'10.20.9.116','10.20.9.117','10.20.9.118','10.20.9.119','10.20.9.120', null,'10.20.9.161','10.20.9.162','10.20.9.163','10.20.9.164','10.20.9.165', null,'10.20.9.166','10.20.9.167','10.20.9.168','10.20.9.169','10.20.9.170'],
+                    ['10.20.9.121','10.20.9.122','10.20.9.123','10.20.9.124','10.20.9.125', null,'10.20.9.126','10.20.9.127','10.20.9.128','10.20.9.129','10.20.9.130', null,'10.20.9.171','10.20.9.172','10.20.9.173','10.20.9.174','10.20.9.175', null,'10.20.9.176','10.20.9.177','10.20.9.178','10.20.9.179','10.20.9.180'],
+                    ['10.20.9.131','10.20.9.132','10.20.9.133','10.20.9.134','10.20.9.135', null,'10.20.9.136','10.20.9.137','10.20.9.138','10.20.9.139','10.20.9.140', null,'10.20.9.181','10.20.9.182','10.20.9.183','10.20.9.184','10.20.9.185', null,'10.20.9.186','10.20.9.187','10.20.9.188','10.20.9.189','10.20.9.190'],
+                    ['10.20.9.141','10.20.9.142','10.20.9.143','10.20.9.144','10.20.9.145', null,'10.20.9.146','10.20.9.147','10.20.9.148','10.20.9.149','10.20.9.150', null,'10.20.9.191','10.20.9.192','10.20.9.193','10.20.9.194','10.20.9.195', null,'10.20.9.196','10.20.9.197','10.20.9.198','10.20.9.199','10.20.9.200']
+                ]
+            },
+            lab2: {
+                key: 'lab2',
+                title: 'CSL 3 & 4',
+                subtitle: 'Lab 2 layout with 100 PCs',
+                rows: [
+                    ['10.20.9.1','10.20.9.2','10.20.9.3','10.20.9.4','10.20.9.5', null,'10.20.9.6','10.20.9.7','10.20.9.8','10.20.9.9','10.20.9.10', null,'10.20.9.51','10.20.9.52','10.20.9.53','10.20.9.54','10.20.9.55', null,'10.20.9.56','10.20.9.57','10.20.9.58','10.20.9.59','10.20.9.60'],
+                    ['10.20.9.11','10.20.9.12','10.20.9.13','10.20.9.14','10.20.9.15', null,'10.20.9.16','10.20.9.17','10.20.9.18','10.20.9.19','10.20.9.20', null,'10.20.9.61','10.20.9.62','10.20.9.63','10.20.9.64','10.20.9.65', null,'10.20.9.66','10.20.9.67','10.20.9.68','10.20.9.69','10.20.9.70'],
+                    ['10.20.9.21','10.20.9.22','10.20.9.23','10.20.9.24','10.20.9.25', null,'10.20.9.26','10.20.9.27','10.20.9.28','10.20.9.29','10.20.9.30', null,'10.20.9.71','10.20.9.72','10.20.9.73','10.20.9.74','10.20.9.75', null,'10.20.9.76','10.20.9.77','10.20.9.78','10.20.9.79','10.20.9.80'],
+                    ['10.20.9.31','10.20.9.32','10.20.9.33','10.20.9.34','10.20.9.35', null,'10.20.9.36','10.20.9.37','10.20.9.38','10.20.9.39','10.20.9.40', null,'10.20.9.81','10.20.9.82','10.20.9.83','10.20.9.84','10.20.9.85', null,'10.20.9.86','10.20.9.87','10.20.9.88','10.20.9.89','10.20.9.90'],
+                    ['10.20.9.41','10.20.9.42','10.20.9.43','10.20.9.44','10.20.9.45', null,'10.20.9.46','10.20.9.47','10.20.9.48','10.20.9.49','10.20.9.50', null,'10.20.9.91','10.20.9.92','10.20.9.93','10.20.9.94','10.20.9.95', null,'10.20.9.96','10.20.9.97','10.20.9.98','10.20.9.99','10.20.9.100']
+                ]
+            }
+        };
+
         // Modal functions
         function showAgentsModal(type) {
             const modal = new bootstrap.Modal(document.getElementById('agentsModal'));
@@ -174,7 +525,7 @@
                 modalContent.innerHTML = generateAgentsTable(agentsData);
             } else if (type === 'online') {
                 modalLabel.textContent = 'Online Agents';
-                const onlineAgents = agentsData.filter(agent => agent.status === 'online');
+                const onlineAgents = agentsData.filter(agent => getAgentStatus(agent) === 'online');
                 modalContent.innerHTML = generateAgentsTable(onlineAgents);
             }
 
@@ -187,6 +538,50 @@
 
             modalContent.innerHTML = generateFilesTable(filesData);
             modal.show();
+        }
+
+        function normalizeIp(ip) {
+            return String(ip || '').trim();
+        }
+
+        function getAgentIp(agent) {
+            return normalizeIp(agent.ip || agent.ip_address || '');
+        }
+
+        function getAgentStatus(agent) {
+            return (agent.status || '').toLowerCase() === 'online' ? 'online' : 'offline';
+        }
+
+        function getAgentName(agent, fallbackIp = '') {
+            return agent.name || agent.hostname || agent.agent_name || fallbackIp || `Agent ${agent.id || ''}`.trim();
+        }
+
+        function buildAgentMap(agents) {
+            const map = {};
+            agents.forEach(agent => {
+                const ip = getAgentIp(agent);
+                if (ip) {
+                    map[ip] = agent;
+                }
+            });
+            return map;
+        }
+
+        function getLabIps(layout) {
+            return layout.rows.flat().filter(Boolean);
+        }
+
+        function getAgentsForLab(layout, agents) {
+            const labIps = new Set(getLabIps(layout));
+            return agents.filter(agent => labIps.has(getAgentIp(agent)));
+        }
+
+        function getOtherAgents(agents) {
+            const allLabIps = new Set([
+                ...getLabIps(LAB_LAYOUTS.lab1),
+                ...getLabIps(LAB_LAYOUTS.lab2)
+            ]);
+            return agents.filter(agent => !allLabIps.has(getAgentIp(agent)));
         }
 
         function generateAgentsTable(agents) {
@@ -210,16 +605,17 @@
             `;
 
             agents.forEach(agent => {
-                const statusClass = agent.status === 'online' ? 'text-success' : 'text-danger';
-                const statusIcon = agent.status === 'online' ? 'fa-circle-check' : 'fa-circle-xmark';
+                const status = getAgentStatus(agent);
+                const statusClass = status === 'online' ? 'text-success' : 'text-danger';
+                const statusIcon = status === 'online' ? 'fa-circle-check' : 'fa-circle-xmark';
 
                 html += `
                     <tr>
-                        <td>${agent.id}</td>
-                        <td>${agent.name}</td>
-                        <td><i class="fas ${statusIcon} ${statusClass} me-1"></i>${agent.status}</td>
+                        <td>${agent.id ?? 'N/A'}</td>
+                        <td>${getAgentName(agent, getAgentIp(agent))}</td>
+                        <td><i class="fas ${statusIcon} ${statusClass} me-1"></i>${status}</td>
                         <td>${agent.last_seen ? new Date(agent.last_seen).toLocaleString() : 'Never'}</td>
-                        <td>${agent.ip_address}</td>
+                        <td>${getAgentIp(agent) || 'N/A'}</td>
                     </tr>
                 `;
             });
@@ -298,10 +694,10 @@
                     return;
                 }
 
-                agentsData = agents;
-                filesData = files;
-                updateStats(agents, files);
-                renderAgents(agents);
+                agentsData = Array.isArray(agents) ? agents : [];
+                filesData = Array.isArray(files) ? files : [];
+                updateStats(agentsData, filesData);
+                renderSelectedView();
                 container.style.display = 'flex';
             })
             .catch(error => {
@@ -313,16 +709,160 @@
 
         function updateStats(agents, files) {
             document.getElementById('total-agents').textContent = agents.length;
-            document.getElementById('online-agents').textContent = agents.filter(a => a.status === 'online').length;
+            document.getElementById('online-agents').textContent = agents.filter(a => getAgentStatus(a) === 'online').length;
             document.getElementById('pending-files').textContent = files.length;
         }
 
-        function renderAgents(agents) {
+        function updateLabMeta(items) {
+            const meta = document.getElementById('lab-summary-meta');
+            meta.innerHTML = items.map(item => `<div class="lab-meta-badge">${item}</div>`).join('');
+        }
+
+        function renderSelectedView() {
+            const selected = document.getElementById('lab-selector').value;
             const container = document.getElementById('agents-container');
+            const noAgents = document.getElementById('no-agents');
+
+            container.innerHTML = '';
+            noAgents.style.display = 'none';
+
+            if (selected === 'other') {
+                const otherAgents = getOtherAgents(agentsData);
+                updateLabMeta([
+                    `Section: Other`,
+                    `Agents: ${otherAgents.length}`,
+                    `Online: ${otherAgents.filter(a => getAgentStatus(a) === 'online').length}`
+                ]);
+
+                renderAgentsAsCards(otherAgents);
+                if (otherAgents.length === 0) {
+                    noAgents.style.display = 'block';
+                    container.style.display = 'none';
+                } else {
+                    container.style.display = 'flex';
+                }
+                return;
+            }
+
+            const layout = LAB_LAYOUTS[selected];
+            const labAgents = getAgentsForLab(layout, agentsData);
+            const totalSeats = getLabIps(layout).length;
+            const onlineCount = labAgents.filter(a => getAgentStatus(a) === 'online').length;
+
+            updateLabMeta([
+                `Section: ${layout.title}`,
+                `Rows: ${layout.rows.length}`,
+                `PCs: ${totalSeats}`,
+                `Online: ${onlineCount}`,
+                `Offline: ${totalSeats - onlineCount}`
+            ]);
+
+            container.className = 'row';
+            container.style.display = 'flex';
+            container.innerHTML = `
+                <div class="col-12">
+                    ${generateLabLayout(layout, agentsData)}
+                </div>
+            `;
+        }
+
+        function generateLabLayout(layout, agents) {
+            const agentMap = buildAgentMap(agents);
+            const totalSeats = getLabIps(layout).length;
+            const onlineSeats = getLabIps(layout).filter(ip => {
+                const agent = agentMap[ip];
+                return agent && getAgentStatus(agent) === 'online';
+            }).length;
+
+            let rowsHtml = '';
+
+            layout.rows.forEach((row, rowIndex) => {
+                rowsHtml += `<div class="lab-row">`;
+                rowsHtml += `<div class="row-label">Row ${rowIndex + 1}</div>`;
+
+                row.forEach(cell => {
+                    if (!cell) {
+                        rowsHtml += `<div class="pc-gap" title="Spacing / Walkway"></div>`;
+                        return;
+                    }
+
+                    const agent = agentMap[cell];
+                    const status = agent ? getAgentStatus(agent) : 'offline';
+                    const name = agent ? getAgentName(agent, cell) : 'No Agent';
+                    const lastSeen = agent && agent.last_seen ? new Date(agent.last_seen).toLocaleString() : 'Never';
+                    const statusIcon = status === 'online' ? 'online' : 'offline';
+
+                    rowsHtml += `
+                        <div class="pc-tile ${status}">
+                            <span class="pc-status-dot ${statusIcon}"></span>
+
+                            <img src="${LAP_ICON_SRC}" alt="PC Icon" class="pc-icon"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                            <span class="pc-icon-fallback">
+                                <i class="fas fa-desktop"></i>
+                            </span>
+
+                            <div class="pc-ip">${cell}</div>
+                            <div class="pc-name">${name}</div>
+                            <div class="pc-status-text ${status}">${status.toUpperCase()}</div>
+                            <div class="pc-name" title="Last Seen">
+                                <i class="fas fa-clock me-1"></i>${lastSeen}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                rowsHtml += `</div>`;
+            });
+
+            return `
+                <div class="lab-layout-wrapper fade-in">
+                    <div class="lab-grid-card">
+                        <div class="lab-grid-header">
+                            <div>
+                                <h5 class="mb-1">
+                                    <i class="fas fa-desktop me-2"></i>${layout.title}
+                                </h5>
+                                <div class="text-muted">${layout.subtitle}</div>
+                            </div>
+
+                            <div class="text-end">
+                                <div class="fw-bold">Mapped PCs: ${totalSeats}</div>
+                                <div class="text-muted">Online: ${onlineSeats} / Offline: ${totalSeats - onlineSeats}</div>
+                            </div>
+                        </div>
+
+                        <div class="lab-grid-body">
+                            <div class="lab-rows">
+                                ${rowsHtml}
+                            </div>
+
+                            <div class="layout-legend">
+                                <div class="legend-item">
+                                    <span class="legend-dot online"></span>
+                                    <span>Online</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-dot offline"></span>
+                                    <span>Offline</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-box"></span>
+                                    <span>Empty Space</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAgentsAsCards(agents) {
+            const container = document.getElementById('agents-container');
+            container.className = 'row';
             container.innerHTML = '';
 
             if (agents.length === 0) {
-                document.getElementById('no-agents').style.display = 'block';
                 return;
             }
 
@@ -330,9 +870,11 @@
                 const col = document.createElement('div');
                 col.className = 'col-md-6 col-lg-4 mb-4';
 
-                const statusClass = agent.status === 'online' ? 'online' : 'offline';
-                const statusIcon = agent.status === 'online' ? 'fa-circle-check' : 'fa-circle-xmark';
-                const statusColor = agent.status === 'online' ? 'text-success' : 'text-danger';
+                const status = getAgentStatus(agent);
+                const statusClass = status === 'online' ? 'online' : 'offline';
+                const statusIcon = status === 'online' ? 'fa-circle-check' : 'fa-circle-xmark';
+                const statusColor = status === 'online' ? 'text-success' : 'text-danger';
+                const ip = getAgentIp(agent);
 
                 col.innerHTML = `
                     <div class="agent-card ${statusClass} fade-in" style="animation-delay: ${index * 0.1}s">
@@ -340,16 +882,16 @@
                             <div>
                                 <h5 class="mb-1">
                                     <i class="fas fa-server me-2"></i>
-                                    Agent ${agent.id}
+                                    ${getAgentName(agent, `Agent ${agent.id || ''}`)}
                                 </h5>
-                                <p class="text-muted mb-2">${agent.ip}</p>
+                                <p class="text-muted mb-2">${ip || 'N/A'}</p>
                             </div>
                             <i class="fas ${statusIcon} ${statusColor} fa-lg"></i>
                         </div>
                         <div class="row text-center">
                             <div class="col-6">
-                                <div class="status-${agent.status} px-2 py-1 rounded-pill">
-                                    <small class="fw-bold">${agent.status.toUpperCase()}</small>
+                                <div class="status-${status} px-2 py-1 rounded-pill">
+                                    <small class="fw-bold">${status.toUpperCase()}</small>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -398,7 +940,6 @@
                 } else {
                     showAlert(data.message, 'success');
                     document.getElementById('instruction').value = '';
-                    // Reload agents to show any status changes
                     setTimeout(loadAgents, 2000);
                 }
             })
@@ -433,11 +974,13 @@
             submitInstruction();
         });
 
+        // Dropdown change
+        document.getElementById('lab-selector').addEventListener('change', renderSelectedView);
+
         // Theme toggle functionality
         const themeToggle = document.getElementById('theme-toggle');
         const themeIcon = themeToggle.querySelector('i');
 
-        // Check for saved theme preference or default to light mode
         const currentTheme = localStorage.getItem('theme') || 'light';
         if (currentTheme === 'dark') {
             document.body.classList.add('dark-mode');
@@ -449,7 +992,6 @@
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
 
-            // Update icon
             if (isDark) {
                 themeIcon.classList.remove('fa-moon');
                 themeIcon.classList.add('fa-sun');
