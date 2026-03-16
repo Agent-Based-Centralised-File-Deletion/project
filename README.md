@@ -179,17 +179,35 @@ Add screenshots and demo links here:
 - Demo video: `https://<your-demo-link>`
 
 ## Contributors
-- Team Member 1: System architecture, backend orchestration
-- Team Member 2: Frontend dashboard and verification workflow
-- Team Member 3: Client-agent detection and quarantine logic
-- Team Member 4: Deployment, testing, documentation
+- **Ms. J. Varsha**  
+  Reg No: 2021/CSC/080  
+  Email: varshajeyaraj@gmail.com  
+  Led the overall system design and development. Implemented core backend components including task processing, agent coordination logic, database integration, and system orchestration.
 
-Replace with actual names and roles.
+- **Mr. K.A.T. Saranga**  
+  Reg No: 2021/CSC/027  
+  Email: tharakasaranga755@gmail.com  
+  Designed and implemented the administrative web interface using HTML, CSS, JavaScript, Jinja2 templates, and Bootstrap for responsive UI. Also helped with validating regex.
+
+- **Mr. K.G.H.M.Wijesekara**  
+  Reg No: 2021/CSC/030  
+  Email: hasitha.m.wijesekara@gmail.com  
+  Developed frontend components and user interface features for the administrative dashboard, ensuring usability and integration with backend APIs. Also helped with validating regex.
+
+- **Ms. S. Kujinsika**  
+  Reg No: 2021/CSC/034  
+  Email: kujinsikasivaneswaran@gmail.com  
+  Conducted manual integration and system testing, validation of agent communication and file operations, and assisted in identifying and resolving integration issues.
+
+- **Ms. P. Mathuja**  
+  Reg No: 2021/CSC/088  
+  Email: mathujaparameshwaran@gmail.com  
+  Developed the master server backend logic, implemented task distribution mechanisms, and configured containerised deployment using Docker and Docker Compose.
 
 ## Contact Information
-- Name: `<Your Name>`
-- Email: `<your.email@domain.com>`
-- Institution: `<Your Institution>`
+- Team Lead: Ms. J. Varsha
+- Email: varshajeyaraj@gmail.com
+- Institution: Department of Computer Science (replace with official institution name if needed)
 
 ## Licence
 This project is released under the **MIT License**.
