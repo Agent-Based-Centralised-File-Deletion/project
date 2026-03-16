@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from datetime import datetime, timezone
 from collections import defaultdict
 import logging
 import os
 import sys
+import tempfile
 import threading
 
 
@@ -15,15 +16,39 @@ if PROJECT_ROOT not in sys.path:
 from backend.api.instructions import create_scan_instruction, SUPPORTED_LANGUAGES
 from backend.orchestrator.agent_registry import get_active_agents, update_status
 from backend.network.protocol import send_message
-from backend.network.tcp_server import start_master
-from models import db, DeletionAuditLog
+try:
+    from models import db, DeletionAuditLog
+except ModuleNotFoundError:
+    from frontend.models import db, DeletionAuditLog
 from shared import persistence
 from shared.constants import HEARTBEAT_TIMEOUT
 
 
+def _running_on_vercel() -> bool:
+    return os.getenv("VERCEL") == "1" or bool(os.getenv("VERCEL_ENV"))
+
+
+def _default_sqlalchemy_uri() -> str:
+    configured_uri = os.getenv("SQLALCHEMY_DATABASE_URI")
+    if configured_uri:
+        return configured_uri
+
+    # Vercel only provides ephemeral writable storage under /tmp.
+    if _running_on_vercel():
+        temp_db_path = "/tmp/app.db" if os.name != "nt" else os.path.join(tempfile.gettempdir(), "app.db")
+        normalized = temp_db_path.replace("\\", "/")
+        return f"sqlite:///{normalized}"
+
+    return "sqlite:///app.db"
+
+
+if _running_on_vercel() and not os.getenv("APP_DB_PATH"):
+    os.environ["APP_DB_PATH"] = "/tmp/app.db" if os.name != "nt" else os.path.join(tempfile.gettempdir(), "app.db")
+
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI", "sqlite:///app.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = _default_sqlalchemy_uri()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 with app.app_context():
@@ -34,6 +59,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 _MASTER_THREAD_STARTED = False
 AGENT_STALE_SECONDS = int(os.getenv("AGENT_STALE_SECONDS", max(HEARTBEAT_TIMEOUT * 2, 1)))
+DEFAULT_MASTER_TCP_PORT = int(os.getenv("MASTER_TCP_PORT", 5000))
+DEMO_MODE = os.getenv("DEMO_MODE", "1" if _running_on_vercel() else "0") == "1"
 
 
 def _start_master_thread_if_enabled():
@@ -45,6 +72,8 @@ def _start_master_thread_if_enabled():
         logger.info("START_MASTER_WITH_UI disabled; expecting external backend master.")
         _MASTER_THREAD_STARTED = True
         return
+
+    from backend.network.tcp_server import start_master
 
     threading.Thread(target=start_master, daemon=True).start()
     _MASTER_THREAD_STARTED = True
@@ -91,6 +120,22 @@ def _infer_languages_from_instruction(instruction: str):
     return list(inferred)
 
 
+def _default_master_host() -> str:
+    host = request.host.split(":", 1)[0] if request and request.host else ""
+    return host or "127.0.0.1"
+
+
+def _get_master_endpoint():
+    configured_ip = (persistence.get_setting("master_ip", "") or "").strip()
+    configured_port = (persistence.get_setting("master_port", "") or "").strip()
+    master_ip = configured_ip or _default_master_host()
+    try:
+        master_port = int(configured_port) if configured_port else DEFAULT_MASTER_TCP_PORT
+    except ValueError:
+        master_port = DEFAULT_MASTER_TCP_PORT
+    return master_ip, master_port
+
+
 def _flatten_pending_files(search: str = ""):
     return persistence.list_pending_files(search=search)
 
@@ -129,14 +174,139 @@ def _persist_audit_logs(records, action: str, notes: str = ""):
     db.session.commit()
 
 
+def _seed_demo_data():
+    if not DEMO_MODE:
+        return
+
+    if persistence.list_agents() or persistence.list_pending_files():
+        return
+
+    demo_agents = [
+        ("lab-pc-01", "IDLE"),
+        ("lab-pc-02", "AWAITING_APPROVAL"),
+        ("lab-pc-03", "SCANNING"),
+    ]
+    for agent_ip, status in demo_agents:
+        persistence.upsert_agent(agent_ip, status)
+
+    demo_records = {
+        "lab-pc-01": [
+            {
+                "filename": "old_script.py",
+                "path": r"D:\Lab\Python\old_script.py",
+                "language": "python",
+                "confidence": 0.98,
+                "reason": "Matched cleanup rule for outdated Python lab files",
+                "file_hash": "demo-hash-1",
+                "modified_time": _now_iso(),
+            },
+            {
+                "filename": "experiment.m",
+                "path": r"D:\Lab\MATLAB\experiment.m",
+                "language": "matlab",
+                "confidence": 0.95,
+                "reason": "Matched cleanup rule for MATLAB submissions",
+                "file_hash": "demo-hash-2",
+                "modified_time": _now_iso(),
+            },
+        ],
+        "lab-pc-02": [
+            {
+                "filename": "sample.java",
+                "path": r"D:\Lab\Java\sample.java",
+                "language": "java",
+                "confidence": 0.91,
+                "reason": "Matched cleanup rule for archived Java practice files",
+                "file_hash": "demo-hash-3",
+                "modified_time": _now_iso(),
+            }
+        ],
+    }
+
+    for agent_ip, files in demo_records.items():
+        persistence.replace_pending_files("demo-task-001", agent_ip, files)
+
+    if DeletionAuditLog.query.count() == 0:
+        db.session.add(DeletionAuditLog(
+            record_id="demo-task-001|lab-pc-01|demo-hash-0",
+            task_id="demo-task-001",
+            agent_ip="lab-pc-01",
+            file_hash="demo-hash-0",
+            filename="cleanup_preview.txt",
+            path=r"D:\Lab\Preview\cleanup_preview.txt",
+            language="text",
+            confidence=1.0,
+            action="queued_for_review",
+            notes="Demo audit entry for hosted preview",
+            created_at=datetime.now(),
+        ))
+        db.session.commit()
+
+
+with app.app_context():
+    _seed_demo_data()
+
+
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html")
 
 
+@app.route("/style.css")
+def shared_stylesheet():
+    public_dir = os.path.join(PROJECT_ROOT, "public")
+    public_css = os.path.join(public_dir, "style.css")
+    if os.path.exists(public_css):
+        return send_from_directory(public_dir, "style.css")
+    return send_from_directory(os.path.join(CURRENT_DIR, "static"), "style.css")
+
+
 @app.route("/verification")
 def verification():
     return render_template("verification.html")
+
+
+@app.route("/master-endpoint", methods=["GET"])
+def get_master_endpoint():
+    try:
+        master_ip, master_port = _get_master_endpoint()
+        return jsonify({
+            "master_ip": master_ip,
+            "master_port": master_port,
+        })
+    except Exception as e:
+        logger.error("Error reading master endpoint: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/master-endpoint", methods=["POST"])
+def set_master_endpoint():
+    try:
+        data = request.get_json(silent=True) or {}
+        master_ip = str(data.get("master_ip", "")).strip()
+        if not master_ip:
+            return jsonify({"error": "master_ip is required"}), 400
+
+        raw_port = data.get("master_port", DEFAULT_MASTER_TCP_PORT)
+        try:
+            master_port = int(raw_port)
+        except (TypeError, ValueError):
+            return jsonify({"error": "master_port must be a number"}), 400
+
+        if master_port < 1 or master_port > 65535:
+            return jsonify({"error": "master_port must be between 1 and 65535"}), 400
+
+        persistence.set_setting("master_ip", master_ip)
+        persistence.set_setting("master_port", str(master_port))
+
+        return jsonify({
+            "message": "Master endpoint saved",
+            "master_ip": master_ip,
+            "master_port": master_port,
+        })
+    except Exception as e:
+        logger.error("Error saving master endpoint: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/submit-instruction", methods=["POST"])
@@ -159,6 +329,14 @@ def submit_instruction():
         task = create_scan_instruction(target_languages=target_languages, date_filter=None)
         active_agents = get_active_agents()
         if not active_agents:
+            if DEMO_MODE:
+                logger.info("Demo mode: simulating dispatch for instruction '%s'", instruction)
+                return jsonify({
+                    "message": "Demo mode: instruction accepted. Connect a real backend host for live agent dispatch.",
+                    "task_id": task["task_id"],
+                    "target_languages": target_languages,
+                    "failed_agents": []
+                })
             return jsonify({"error": "No active agents available"}), 400
 
         dispatched = 0
@@ -429,4 +607,4 @@ if __name__ == "__main__":
     # Avoid duplicate server thread under Flask debug reloader.
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or os.getenv("FLASK_DEBUG", "0") != "1":
         _start_master_thread_if_enabled()
-    app.run(host="0.0.0.0", port=int(os.getenv("FLASK_RUN_PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.getenv("FLASK_RUN_PORT", 5001)), debug=True)

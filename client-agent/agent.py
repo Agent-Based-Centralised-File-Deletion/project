@@ -20,7 +20,8 @@ class ClientAgent:
         self.communicator = MasterCommunicator(
             self.config['MASTER_IP'],
             self.config['MASTER_PORT'],
-            self.config['CLIENT_ID']
+            self.config['CLIENT_ID'],
+            config_url=self.config.get('FRONTEND_CONFIG_URL', '')
         )
         self.running = False
         self.current_task = None
@@ -29,6 +30,8 @@ class ClientAgent:
         """Start the agent"""
         self.running = True
         logger.info(f"Client Agent {self.config['CLIENT_ID']} starting...")
+        if not self.config.get('MASTER_IP') and not self.config.get('FRONTEND_CONFIG_URL'):
+            raise ValueError("Configuration error: set MASTER_IP or FRONTEND_CONFIG_URL before starting the agent.")
         
         # Connect to master
         while self.running and not self.communicator.connect():

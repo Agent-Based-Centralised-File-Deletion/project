@@ -5,9 +5,10 @@ services:
     build:
       context: ./backend
     ports:
-      - "8000:8000"
+      - "5000:5000"
     volumes:
       - ./backend:/app
+      - ./shared:/app/shared
     networks:
       - app-network
 
@@ -15,25 +16,32 @@ services:
     build:
       context: ./frontend
     ports:
-      - "5001:5000"  # Changed external port to 5001 to avoid conflict
+      - "5001:5001"
     volumes:
       - ./frontend:/app
-      - ./backend:/app/backend  # Share backend directory with frontend
-      - ./shared:/app/shared  # Share shared directory with frontend
-      - ./backend/network:/app/network  # Share network directory with frontend
+      - ./backend:/app/backend
+      - ./shared:/app/shared
     networks:
       - app-network
     environment:
-      - FLASK_RUN_PORT=5001  # Set Flask to use port 5001
+      - FLASK_RUN_PORT=5001
+      - START_MASTER_WITH_UI=0
+    depends_on:
+      - backend
 
   client-agent:
     build:
       context: ./client-agent
+    volumes:
+      - ./client-agent/test_scan:/app/scan
     networks:
       - app-network
     environment:
-      - BACKEND_HOST=backend  # Use backend service name as hostname
-      - BACKEND_PORT=8000
+      - MASTER_IP=backend
+      - MASTER_PORT=5000
+      - SCAN_DIRS=/app/scan
+    depends_on:
+      - backend
 
 networks:
   app-network:

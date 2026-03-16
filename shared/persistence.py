@@ -3,6 +3,7 @@ import json
 import os
 import sqlite3
 import threading
+import tempfile
 import time
 from datetime import datetime, timezone
 
@@ -15,6 +16,10 @@ def _project_root() -> str:
 
 
 def _default_db_path() -> str:
+    if os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV"):
+        if os.name == "nt":
+            return os.path.join(tempfile.gettempdir(), "app.db")
+        return "/tmp/app.db"
     return os.path.join(_project_root(), "frontend", "instance", "app.db")
 
 
@@ -102,8 +107,49 @@ def init_db():
         )
         cur.execute("CREATE INDEX IF NOT EXISTS idx_delcmd_agent ON delete_command_queue(agent_ip)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_delcmd_status ON delete_command_queue(status)")
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         conn.commit()
         conn.close()
+
+
+def set_setting(key: str, value: str):
+    with _LOCK:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO app_settings(key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value=excluded.value,
+                updated_at=excluded.updated_at
+            """,
+            (key, str(value), _now_iso()),
+        )
+        conn.commit()
+        conn.close()
+
+
+def get_setting(key: str, default: str | None = None):
+    with _LOCK:
+        conn = _connect()
+        cur = conn.cursor()
+        row = cur.execute(
+            "SELECT value FROM app_settings WHERE key=?",
+            (key,),
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return default
+        return row["value"]
 
 
 def upsert_agent(agent_ip: str, status: str):

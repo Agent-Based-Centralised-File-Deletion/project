@@ -11,7 +11,7 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose port
-EXPOSE 8000
+EXPOSE 5000
 
 # Command to run the backend
 CMD ["python", "main.py"]

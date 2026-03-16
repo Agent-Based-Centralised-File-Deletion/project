@@ -1,0 +1,13 @@
+.git
+.history
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.db
+instance
+frontend/instance
+frontend/frontend/instance
+backend/frontend
+client-agent/test_scan
