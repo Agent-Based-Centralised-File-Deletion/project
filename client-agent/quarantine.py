@@ -19,8 +19,16 @@ class QuarantineManager:
             (success: bool, quarantine_path: str)
         """
         try:
-        
-            rel_path = os.path.relpath(filepath, '/')
+            # Build a relative path that works on both Linux and Windows.
+            # Windows drive letters are preserved as a top-level directory.
+            abs_path = os.path.abspath(filepath)
+            drive, tail = os.path.splitdrive(abs_path)
+            tail = tail.lstrip("/\\")
+            if drive:
+                drive_prefix = drive.replace(":", "")
+                rel_path = os.path.join(drive_prefix, tail) if tail else drive_prefix
+            else:
+                rel_path = tail
             quarantine_path = os.path.join(self.quarantine_dir, rel_path)
             
            

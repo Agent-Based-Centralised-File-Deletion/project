@@ -102,6 +102,14 @@ def init_db():
         )
         cur.execute("CREATE INDEX IF NOT EXISTS idx_delcmd_agent ON delete_command_queue(agent_ip)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_delcmd_status ON delete_command_queue(status)")
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS daily_task_counter (
+                date_key TEXT PRIMARY KEY,
+                last_value INTEGER NOT NULL
+            )
+            """
+        )
         conn.commit()
         conn.close()
 
@@ -453,3 +461,49 @@ def remove_pending_after_deletion_report(agent_ip: str, task_id: str, reports):
                 )
         conn.commit()
         conn.close()
+
+
+def next_daily_task_id() -> str:
+    """
+    Generate task IDs in DDMMYYYY-N format with a daily counter starting from 1.
+    """
+    date_key = datetime.now().strftime("%d%m%Y")
+    with _LOCK:
+        conn = _connect()
+        cur = conn.cursor()
+        row = cur.execute(
+            "SELECT last_value FROM daily_task_counter WHERE date_key=?",
+            (date_key,),
+        ).fetchone()
+        next_value = 1
+        if row:
+            next_value = int(row["last_value"]) + 1
+            cur.execute(
+                "UPDATE daily_task_counter SET last_value=? WHERE date_key=?",
+                (next_value, date_key),
+            )
+        else:
+            cur.execute(
+                "INSERT INTO daily_task_counter(date_key, last_value) VALUES (?, ?)",
+                (date_key, next_value),
+            )
+        conn.commit()
+        conn.close()
+    return f"{date_key}-{next_value}"
+
+
+def peek_next_daily_task_id() -> str:
+    """
+    Return the next task ID in DDMMYYYY-N format without incrementing the counter.
+    """
+    date_key = datetime.now().strftime("%d%m%Y")
+    with _LOCK:
+        conn = _connect()
+        cur = conn.cursor()
+        row = cur.execute(
+            "SELECT last_value FROM daily_task_counter WHERE date_key=?",
+            (date_key,),
+        ).fetchone()
+        conn.close()
+    next_value = (int(row["last_value"]) + 1) if row else 1
+    return f"{date_key}-{next_value}"

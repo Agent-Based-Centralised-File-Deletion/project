@@ -1,6 +1,7 @@
 import threading
 import time
 import os
+from datetime import datetime
 
 from config import CONFIG, logger
 from detector import PatternBasedDetector
@@ -94,10 +95,12 @@ class ClientAgent:
         
         # Extract task parameters
         target_languages = task.get('target_languages', ['python', 'matlab', 'perl'])
-        date_filter = task.get('date_filter')
+        date_filter = self._parse_date_filter(task.get('date_filter'))
+        scan_paths = [str(p).strip() for p in task.get('scan_paths', []) if str(p).strip()]
+        scanner = FileScanner(scan_paths) if scan_paths else self.scanner
         
         # Scan files
-        files = self.scanner.scan(date_filter=date_filter)
+        files = scanner.scan(date_filter=date_filter)
         
         # Analyze files
         results = []
@@ -126,6 +129,29 @@ class ClientAgent:
             self.communicator.send_scan_results(task_id, results)
         else:
             logger.info("No files found matching criteria")
+
+    def _parse_date_filter(self, raw_date_filter):
+        """Convert incoming date filter payload to datetime objects for scanner."""
+        if not isinstance(raw_date_filter, dict):
+            return None
+
+        parsed = {}
+        for key in ("start", "end"):
+            value = raw_date_filter.get(key)
+            if not value:
+                continue
+            if isinstance(value, datetime):
+                parsed[key] = value
+                continue
+            if isinstance(value, str):
+                text = value.strip()
+                if not text:
+                    continue
+                try:
+                    parsed[key] = datetime.fromisoformat(text.replace("Z", "+00:00"))
+                except ValueError:
+                    logger.warning("Invalid %s in date_filter: %s", key, value)
+        return parsed or None
     
     def _execute_deletion(self, message: dict):
         """Execute approved file deletions"""

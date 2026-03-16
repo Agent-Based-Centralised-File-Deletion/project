@@ -1,13 +1,30 @@
-import uuid
 from datetime import datetime
 
+from shared import persistence
 
-SUPPORTED_LANGUAGES = {"python", "matlab", "c", "cpp", "java"}
+
+SUPPORTED_LANGUAGES = {
+    "java",
+    "c",
+    "cpp",
+    "python",
+    "php",
+    "javascript",
+    "html",
+    "css",
+    "mysql",
+    "nosql",
+    "perl",
+    "prolog",
+    "matlab",
+    "assembly",
+}
 
 
 def create_scan_instruction(
     target_languages,
-    date_filter=None
+    date_filter=None,
+    scan_paths=None
 ):
     """
     Converts admin intent into a structured scan task.
@@ -22,9 +39,10 @@ def create_scan_instruction(
 
     task = {
         "type": "scan_task",
-        "task_id": f"scan-{uuid.uuid4().hex[:8]}",
+        "task_id": persistence.next_daily_task_id(),
         "target_languages": list(target_languages),
         "date_filter": date_filter,
+        "scan_paths": list(scan_paths or []),
         "created_at": datetime.utcnow().isoformat()
     }
 

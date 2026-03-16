@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from collections import defaultdict
 import logging
 import os
+import re
 import sys
 import threading
 
@@ -34,6 +35,48 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 _MASTER_THREAD_STARTED = False
 AGENT_STALE_SECONDS = int(os.getenv("AGENT_STALE_SECONDS", max(HEARTBEAT_TIMEOUT * 2, 1)))
+LANGUAGE_LABELS = {
+    "java": "Java",
+    "c": "C",
+    "cpp": "C++",
+    "python": "Python",
+    "php": "PHP",
+    "javascript": "JavaScript",
+    "html": "HTML",
+    "css": "CSS",
+    "mysql": "MySQL",
+    "nosql": "NoSQL",
+    "perl": "Perl",
+    "prolog": "Prolog",
+    "matlab": "MATLAB",
+    "assembly": "Assembly",
+}
+LAB_LAYOUTS = [
+    {
+        "key": "lab1",
+        "title": "CSL 1 & 2",
+        "subtitle": "Lab 1 layout with 100 PCs",
+        "rows": [
+            ["10.20.9.101", "10.20.9.102", "10.20.9.103", "10.20.9.104", "10.20.9.105", None, "10.20.9.106", "10.20.9.107", "10.20.9.108", "10.20.9.109", "10.20.9.110", None, "10.20.9.151", "10.20.9.152", "10.20.9.153", "10.20.9.154", "10.20.9.155", None, "10.20.9.156", "10.20.9.157", "10.20.9.158", "10.20.9.159", "10.20.9.160"],
+            ["10.20.9.111", "10.20.9.112", "10.20.9.113", "10.20.9.114", "10.20.9.115", None, "10.20.9.116", "10.20.9.117", "10.20.9.118", "10.20.9.119", "10.20.9.120", None, "10.20.9.161", "10.20.9.162", "10.20.9.163", "10.20.9.164", "10.20.9.165", None, "10.20.9.166", "10.20.9.167", "10.20.9.168", "10.20.9.169", "10.20.9.170"],
+            ["10.20.9.121", "10.20.9.122", "10.20.9.123", "10.20.9.124", "10.20.9.125", None, "10.20.9.126", "10.20.9.127", "10.20.9.128", "10.20.9.129", "10.20.9.130", None, "10.20.9.171", "10.20.9.172", "10.20.9.173", "10.20.9.174", "10.20.9.175", None, "10.20.9.176", "10.20.9.177", "10.20.9.178", "10.20.9.179", "10.20.9.180"],
+            ["10.20.9.131", "10.20.9.132", "10.20.9.133", "10.20.9.134", "10.20.9.135", None, "10.20.9.136", "10.20.9.137", "10.20.9.138", "10.20.9.139", "10.20.9.140", None, "10.20.9.181", "10.20.9.182", "10.20.9.183", "10.20.9.184", "10.20.9.185", None, "10.20.9.186", "10.20.9.187", "10.20.9.188", "10.20.9.189", "10.20.9.190"],
+            ["10.20.9.141", "10.20.9.142", "10.20.9.143", "10.20.9.144", "10.20.9.145", None, "10.20.9.146", "10.20.9.147", "10.20.9.148", "10.20.9.149", "10.20.9.150", None, "10.20.9.191", "10.20.9.192", "10.20.9.193", "10.20.9.194", "10.20.9.195", None, "10.20.9.196", "10.20.9.197", "10.20.9.198", "10.20.9.199", "10.20.9.200"],
+        ],
+    },
+    {
+        "key": "lab2",
+        "title": "CSL 3 & 4",
+        "subtitle": "Lab 2 layout with 100 PCs",
+        "rows": [
+            ["10.20.9.1", "10.20.9.2", "10.20.9.3", "10.20.9.4", "10.20.9.5", None, "10.20.9.6", "10.20.9.7", "10.20.9.8", "10.20.9.9", "10.20.9.10", None, "10.20.9.51", "10.20.9.52", "10.20.9.53", "10.20.9.54", "10.20.9.55", None, "10.20.9.56", "10.20.9.57", "10.20.9.58", "10.20.9.59", "10.20.9.60"],
+            ["10.20.9.11", "10.20.9.12", "10.20.9.13", "10.20.9.14", "10.20.9.15", None, "10.20.9.16", "10.20.9.17", "10.20.9.18", "10.20.9.19", "10.20.9.20", None, "10.20.9.61", "10.20.9.62", "10.20.9.63", "10.20.9.64", "10.20.9.65", None, "10.20.9.66", "10.20.9.67", "10.20.9.68", "10.20.9.69", "10.20.9.70"],
+            ["10.20.9.21", "10.20.9.22", "10.20.9.23", "10.20.9.24", "10.20.9.25", None, "10.20.9.26", "10.20.9.27", "10.20.9.28", "10.20.9.29", "10.20.9.30", None, "10.20.9.71", "10.20.9.72", "10.20.9.73", "10.20.9.74", "10.20.9.75", None, "10.20.9.76", "10.20.9.77", "10.20.9.78", "10.20.9.79", "10.20.9.80"],
+            ["10.20.9.31", "10.20.9.32", "10.20.9.33", "10.20.9.34", "10.20.9.35", None, "10.20.9.36", "10.20.9.37", "10.20.9.38", "10.20.9.39", "10.20.9.40", None, "10.20.9.81", "10.20.9.82", "10.20.9.83", "10.20.9.84", "10.20.9.85", None, "10.20.9.86", "10.20.9.87", "10.20.9.88", "10.20.9.89", "10.20.9.90"],
+            ["10.20.9.41", "10.20.9.42", "10.20.9.43", "10.20.9.44", "10.20.9.45", None, "10.20.9.46", "10.20.9.47", "10.20.9.48", "10.20.9.49", "10.20.9.50", None, "10.20.9.91", "10.20.9.92", "10.20.9.93", "10.20.9.94", "10.20.9.95", None, "10.20.9.96", "10.20.9.97", "10.20.9.98", "10.20.9.99", "10.20.9.100"],
+        ],
+    },
+]
 
 
 def _start_master_thread_if_enabled():
@@ -55,6 +98,12 @@ def _now_iso() -> str:
     return datetime.now().astimezone().isoformat()
 
 
+def _is_absolute_path_any_os(path: str) -> bool:
+    if not path:
+        return False
+    return bool(re.match(r"^[A-Za-z]:[\\/]", path) or path.startswith("/"))
+
+
 def _is_online(raw_status: str, last_seen_ts, now_ts: float) -> bool:
     if str(raw_status).upper() == "OFFLINE":
         return False
@@ -72,11 +121,20 @@ def _infer_languages_from_instruction(instruction: str):
 
     # Keep this conservative; default remains python if no clear hit.
     mapping = {
-        "python": ["python", ".py"],
-        "matlab": ["matlab", ".m"],
         "java": ["java", ".java"],
-        "cpp": ["c++", "cpp", ".cpp", ".cc"],
         "c": [" c ", " c-language ", ".c "],
+        "cpp": ["c++", "cpp", ".cpp", ".cc", ".cxx", ".hpp"],
+        "python": ["python", ".py"],
+        "php": ["php", ".php", ".phtml"],
+        "javascript": ["javascript", "js", ".js", ".jsx", ".mjs", ".cjs"],
+        "html": ["html", ".html", ".htm"],
+        "css": ["css", ".css", ".scss", ".sass", ".less"],
+        "mysql": ["mysql", "sql", ".sql", "select ", "create table"],
+        "nosql": ["nosql", "mongodb", "cassandra", "db.", "$set", "keyspace"],
+        "matlab": ["matlab", ".m"],
+        "perl": ["perl", ".pl", ".pm"],
+        "prolog": ["prolog", ":-", "?-"],
+        "assembly": ["assembly", ".asm", "mov ", "jmp ", "section ."],
     }
 
     padded = f" {text} "
@@ -139,12 +197,58 @@ def verification():
     return render_template("verification.html")
 
 
+@app.route("/ui-config", methods=["GET"])
+def ui_config():
+    try:
+        total_expected_agents = 0
+        for section in LAB_LAYOUTS:
+            total_expected_agents += sum(1 for row in section["rows"] for cell in row if cell)
+
+        supported = sorted(SUPPORTED_LANGUAGES)
+        language_options = [{"value": lang, "label": LANGUAGE_LABELS.get(lang, lang.upper())} for lang in supported]
+
+        sections = []
+        for section in LAB_LAYOUTS:
+            sections.append({
+                "key": section["key"],
+                "title": section["title"],
+                "subtitle": section["subtitle"],
+                "rows": section["rows"],
+            })
+        sections.append({
+            "key": "other",
+            "title": "Other",
+            "subtitle": "Agents not mapped to configured lab layouts",
+            "rows": [],
+        })
+
+        return jsonify({
+            "supported_languages": language_options,
+            "lab_sections": sections,
+            "total_expected_agents": total_expected_agents,
+        })
+    except Exception as e:
+        logger.error("Error getting UI config: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/next-task-id", methods=["GET"])
+def next_task_id():
+    try:
+        return jsonify({"task_id": persistence.peek_next_daily_task_id()})
+    except Exception as e:
+        logger.error("Error getting next task id: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
 @app.route("/submit-instruction", methods=["POST"])
 def submit_instruction():
     try:
         data = request.get_json(silent=True) or {}
         instruction = str(data.get("instruction", "")).strip()
         target_languages = data.get("target_languages")
+        scan_path = str(data.get("scan_path", "")).strip()
+        raw_date_filter = data.get("date_filter")
 
         if not target_languages:
             if not instruction:
@@ -155,8 +259,34 @@ def submit_instruction():
         invalid = [x for x in target_languages if x not in SUPPORTED_LANGUAGES]
         if invalid:
             return jsonify({"error": f"Unsupported languages: {invalid}"}), 400
+        if not scan_path:
+            return jsonify({"error": "scan_path is required"}), 400
+        if not _is_absolute_path_any_os(scan_path):
+            return jsonify({"error": "scan_path must be an absolute path"}), 400
 
-        task = create_scan_instruction(target_languages=target_languages, date_filter=None)
+        date_filter = None
+        if isinstance(raw_date_filter, dict):
+            start = str(raw_date_filter.get("start", "")).strip()
+            end = str(raw_date_filter.get("end", "")).strip()
+            if start or end:
+                try:
+                    date_filter = {}
+                    if start:
+                        datetime.fromisoformat(start)
+                        date_filter["start"] = start
+                    if end:
+                        datetime.fromisoformat(end)
+                        date_filter["end"] = end
+                    if start and end and datetime.fromisoformat(start) > datetime.fromisoformat(end):
+                        return jsonify({"error": "date_filter.start must be before date_filter.end"}), 400
+                except ValueError:
+                    return jsonify({"error": "date_filter values must be ISO datetime strings"}), 400
+
+        task = create_scan_instruction(
+            target_languages=target_languages,
+            date_filter=date_filter,
+            scan_paths=[scan_path],
+        )
         active_agents = get_active_agents()
         if not active_agents:
             return jsonify({"error": "No active agents available"}), 400
@@ -182,6 +312,8 @@ def submit_instruction():
             "message": f"Instruction dispatched to {dispatched} agent(s)",
             "task_id": task["task_id"],
             "target_languages": target_languages,
+            "scan_path": scan_path,
+            "date_filter": date_filter,
             "failed_agents": failed
         })
     except Exception as e:

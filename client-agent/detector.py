@@ -71,6 +71,34 @@ class PatternBasedDetector:
             (r'//[^\n]*', 'single-line comment'),
             (r'/\*[\s\S]*?\*/', 'multi-line comment'),
         ],
+        'c': [
+            (r'#include\s*<[^>]+>', 'include directive'),
+            (r'\b(int|char|float|double|void)\s+\*?\s*\w+\s*\([^)]*\)\s*\{', 'function definition'),
+            (r'\bprintf\s*\(', 'printf call'),
+            (r'\bscanf\s*\(', 'scanf call'),
+            (r'\b(sizeof|malloc|free)\b', 'memory keyword'),
+            (r'//[^\n]*', 'single-line comment'),
+            (r'/\*[\s\S]*?\*/', 'multi-line comment'),
+        ],
+        'cpp': [
+            (r'#include\s*<[^>]+>', 'include directive'),
+            (r'\bstd::\w+', 'std namespace usage'),
+            (r'\bclass\s+\w+\s*\{', 'class definition'),
+            (r'\btemplate\s*<[^>]+>', 'template definition'),
+            (r'\b(cout|cin)\s*<<|\b(cout|cin)\s*>>', 'stream operator'),
+            (r'\bnamespace\s+\w+', 'namespace declaration'),
+            (r'//[^\n]*', 'single-line comment'),
+            (r'/\*[\s\S]*?\*/', 'multi-line comment'),
+        ],
+        'php': [
+            (r'<\?php', 'php open tag'),
+            (r'\$\w+\s*=', 'php variable assignment'),
+            (r'function\s+\w+\s*\([^)]*\)\s*\{', 'function definition'),
+            (r'(echo|print)\s+', 'output statement'),
+            (r'->\w+', 'object operator'),
+            (r'\brequire(_once)?\s*\(|\binclude(_once)?\s*\(', 'include/require'),
+            (r'//[^\n]*|#[^\n]*', 'single-line comment'),
+        ],
         'javascript': [
             (r'function\s+\w+\s*\([^)]*\)', 'function definition'),
             (r'const\s+\w+\s*=\s*\([^)]*\)\s*=>', 'arrow function'),
@@ -113,6 +141,34 @@ class PatternBasedDetector:
             (r'(color|background|font|margin|padding|width|height):', 'property'),
             (r'/\*[\s\S]*?\*/', 'css comment'),
             (r'rgba?\s*\(', 'color function'),
+        ],
+        'mysql': [
+            (r'\bCREATE\s+TABLE\b', 'create table'),
+            (r'\b(SELECT|INSERT|UPDATE|DELETE)\b[\s\S]*?\b(FROM|INTO)\b', 'dml statement'),
+            (r'\bALTER\s+TABLE\b', 'alter table'),
+            (r'\bJOIN\b', 'join clause'),
+            (r'\bWHERE\b', 'where clause'),
+            (r'--[^\n]*', 'sql comment'),
+        ],
+        'nosql': [
+            (r'\bdb\.\w+\.(find|insertOne|insertMany|updateOne|updateMany|aggregate)\s*\(', 'mongodb operation'),
+            (r'"\$(set|inc|push|pull|match|group|project)"', 'mongodb operator'),
+            (r'\b(CREATE\s+KEYSPACE|CREATE\s+COLUMNFAMILY|SELECT\s+JSON)\b', 'cassandra/cql syntax'),
+            (r'\{[\s\S]*:\s*[\s\S]*\}', 'json document'),
+        ],
+        'prolog': [
+            (r'^\s*\w+\s*\([^)]*\)\s*:-', 'rule definition'),
+            (r'^\s*\w+\s*\([^)]*\)\s*\.', 'fact definition'),
+            (r'^\s*:-\s*\w+', 'directive'),
+            (r'^\s*\?-', 'query'),
+            (r'%[^\n]*', 'prolog comment'),
+        ],
+        'assembly': [
+            (r'^\s*(MOV|ADD|SUB|CMP|JMP|CALL|PUSH|POP)\b', 'instruction mnemonic'),
+            (r'^\s*(section|segment)\s+\.\w+', 'section declaration'),
+            (r'^\s*global\s+\w+', 'global symbol'),
+            (r'^\s*\w+:\s*$', 'label'),
+            (r';[^\n]*', 'assembly comment'),
         ]
     }
     
@@ -141,6 +197,21 @@ class PatternBasedDetector:
             'new', 'this', 'super', 'static', 'final', 'abstract',
             'try', 'catch', 'throw', 'throws', 'import', 'package'
         ],
+        'c': [
+            'int', 'char', 'float', 'double', 'void', 'struct', 'typedef',
+            'enum', 'union', 'sizeof', 'malloc', 'free', 'printf', 'scanf',
+            '#include', '#define', 'NULL', 'static', 'extern'
+        ],
+        'cpp': [
+            'class', 'namespace', 'template', 'typename', 'std', 'cout', 'cin',
+            'vector', 'string', 'new', 'delete', 'public', 'private', 'protected',
+            'virtual', 'override', 'constexpr', 'nullptr'
+        ],
+        'php': [
+            'php', 'function', 'echo', 'print', 'array', 'foreach', 'require',
+            'include', 'namespace', 'use', 'class', 'public', 'private',
+            'protected', 'static', 'null', 'true', 'false'
+        ],
         'javascript': [
             'function', 'const', 'let', 'var', 'if', 'else', 'for',
             'while', 'return', 'class', 'this', 'new', 'async', 'await',
@@ -158,6 +229,25 @@ class PatternBasedDetector:
             'height', 'display', 'position', 'flex', 'grid', 'border',
             'hover', 'active', 'focus', 'media', 'import', 'keyframes',
             'transform', 'transition', 'animation', 'rgba', 'px', 'rem'
+        ],
+        'mysql': [
+            'select', 'insert', 'update', 'delete', 'from', 'where', 'join',
+            'group', 'order', 'having', 'create', 'table', 'alter', 'index',
+            'primary', 'foreign', 'key', 'engine', 'values'
+        ],
+        'nosql': [
+            'db', 'find', 'insertOne', 'insertMany', 'updateOne', 'updateMany',
+            'aggregate', '$set', '$inc', '$push', '$pull', '$match', '$group',
+            'collection', 'document', 'keyspace', 'columnfamily'
+        ],
+        'prolog': [
+            ':-', '?-', 'is', 'not', 'fail', 'true', 'false', 'assert',
+            'retract', 'consult', 'dynamic', 'rule', 'fact'
+        ],
+        'assembly': [
+            'mov', 'add', 'sub', 'mul', 'div', 'cmp', 'jmp', 'je', 'jne',
+            'call', 'ret', 'push', 'pop', 'eax', 'ebx', 'ecx', 'edx',
+            'section', 'global', 'label'
         ]
     }
     
@@ -167,9 +257,16 @@ class PatternBasedDetector:
         'matlab': ['.m', '.mat', '.fig'],
         'perl': ['.pl', '.pm', '.t'],
         'java': ['.java', '.class', '.jar'],
+        'c': ['.c', '.h'],
+        'cpp': ['.cpp', '.cc', '.cxx', '.hpp', '.hh', '.hxx'],
+        'php': ['.php', '.phtml', '.php3', '.php4', '.php5'],
         'javascript': ['.js', '.jsx', '.mjs', '.cjs'],
         'html': ['.html', '.htm'],
-        'css': ['.css', '.scss', '.sass', '.less']
+        'css': ['.css', '.scss', '.sass', '.less'],
+        'mysql': ['.sql'],
+        'nosql': ['.mongo', '.cql', '.jsonl'],
+        'prolog': ['.pro', '.prolog', '.plg'],
+        'assembly': ['.asm', '.s', '.S']
     }
 
     # Language-unique syntax indicators that are hard to fake accidentally.
@@ -197,6 +294,22 @@ class PatternBasedDetector:
             r'^\s*(public|private|protected)\s+class\s+\w+\s*\{',
             r'System\.out\.(print|println)\s*\(',
         ],
+        'c': [
+            r'^\s*#include\s*<[^>]+>',
+            r'^\s*int\s+main\s*\([^)]*\)\s*\{',
+            r'\bprintf\s*\(',
+        ],
+        'cpp': [
+            r'^\s*#include\s*<iostream>',
+            r'\bstd::(cout|cin)\b',
+            r'^\s*template\s*<[^>]+>',
+            r'^\s*class\s+\w+\s*\{',
+        ],
+        'php': [
+            r'<\?php',
+            r'^\s*\$\w+\s*=',
+            r'\b(require|include)(_once)?\s*\(',
+        ],
         'javascript': [
             r'^\s*(const|let|var)\s+\w+\s*=',
             r'^\s*import\s+.+\s+from\s+["\']',
@@ -212,6 +325,26 @@ class PatternBasedDetector:
             r'^\s*[\.\#]?\w[\w\-]*\s*\{',
             r'^\s*@media\s+',
             r'^\s*[\w\-]+\s*:\s*[^;]+;',
+        ],
+        'mysql': [
+            r'\bCREATE\s+TABLE\b',
+            r'\bSELECT\b[\s\S]*\bFROM\b',
+            r'\bENGINE\s*=\s*\w+',
+        ],
+        'nosql': [
+            r'\bdb\.\w+\.(find|aggregate|updateOne)\s*\(',
+            r'"\$(set|inc|match|group)"',
+            r'^\s*\{[\s\S]*\}\s*$',
+        ],
+        'prolog': [
+            r'^\s*\w+\s*\([^)]*\)\s*:-',
+            r'^\s*\w+\s*\([^)]*\)\s*\.',
+            r'^\s*\?-',
+        ],
+        'assembly': [
+            r'^\s*(MOV|ADD|SUB|CMP|JMP|CALL|PUSH|POP)\b',
+            r'^\s*section\s+\.\w+',
+            r'^\s*\w+:\s*$',
         ]
     }
 
