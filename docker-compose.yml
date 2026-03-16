@@ -5,7 +5,7 @@ services:
     build:
       context: ./backend
     ports:
-      - "8000:8000"
+      - "5000:5000"
     volumes:
       - ./backend:/app
     networks:
@@ -24,7 +24,7 @@ services:
     networks:
       - app-network
     environment:
-      - FLASK_RUN_PORT=5001  # Set Flask to use port 5001
+      - FLASK_RUN_PORT=5000  # Container listens on 5000, exposed as host 5001
 
   client-agent:
     build:
@@ -33,7 +33,7 @@ services:
       - app-network
     environment:
       - BACKEND_HOST=backend  # Use backend service name as hostname
-      - BACKEND_PORT=8000
+      - BACKEND_PORT=5000
 
 networks:
   app-network:
