@@ -388,36 +388,63 @@
             </div>
         </div>
 
-        <!-- Command Submission -->
+        <!-- File Scan Task -->
         <div class="row mb-5">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-terminal me-2"></i>
-                            Submit Deletion Instruction
+                            <i class="fas fa-search me-2"></i>
+                            File Scan Task
                         </h5>
                     </div>
                     <div class="card-body">
-                        <form id="command-form">
+                        <form id="scan-form">
                             <div class="mb-3">
-                                <label for="instruction" class="form-label">
-                                    <i class="fas fa-keyboard me-1"></i>
-                                    Enter natural language command
-                                </label>
-                                <input type="text" class="form-control form-control-lg" id="instruction"
-                                       placeholder="Example:- Delete all MATLAB files"
-                                       required>
-                                <div class="form-text">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Be specific about file types, locations, or patterns
-                                </div>
+                                <label for="task-id" class="form-label">Task ID</label>
+                                <input type="text" class="form-control" id="task-id" readonly>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-paper-plane me-2"></i>
-                                Submit Instruction
+                            <div class="mb-3">
+                                <label for="target-language" class="form-label">Target Language</label>
+                                <select class="form-select" id="target-language" required>
+                                    <option value="">Select Language</option>
+                                    <option value="python">Python</option>
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="java">Java</option>
+                                    <option value="c++">C++</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div id="other-language-form" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="new-language" class="form-label">Target Language</label>
+                                    <input type="text" class="form-control" id="new-language" placeholder="e.g., MATLAB">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="keywords" class="form-label">Keywords</label>
+                                    <input type="text" class="form-control" id="keywords" placeholder="e.g., function,class">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="extension" class="form-label">Extension</label>
+                                    <input type="text" class="form-control" id="extension" placeholder="e.g., .m">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="pattern" class="form-label">Pattern</label>
+                                    <input type="text" class="form-control" id="pattern" placeholder="e.g., *.m">
+                                </div>
+                                <button type="button" class="btn btn-secondary" id="add-language-btn">Add Language</button>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg" id="scan-btn">
+                                <i class="fas fa-search me-2"></i>
+                                Scan
                             </button>
                         </form>
+                        <div id="scan-results" class="mt-4" style="display: none;">
+                            <h6>Scan Results</h6>
+                            <div id="results-content">
+                                <!-- Results will be shown here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -482,10 +509,111 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        console.log('Dashboard script loaded');
+
         let agentsData = [];
         let filesData = [];
 
         const LAP_ICON_SRC = "lapIcon.png";
+
+        // Generate task ID
+        function generateTaskId() {
+            return 'TASK-' + Date.now();
+        }
+
+        // Set initial task ID on load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('task-id').value = generateTaskId();
+
+            // Handle language dropdown change
+            document.getElementById('target-language').addEventListener('change', function() {
+                const otherForm = document.getElementById('other-language-form');
+                if (this.value === 'other') {
+                    otherForm.style.display = 'block';
+                } else {
+                    otherForm.style.display = 'none';
+                }
+            });
+
+            // Handle add language button
+            document.getElementById('add-language-btn').addEventListener('click', function() {
+                const newLang = document.getElementById('new-language').value;
+                const keywords = document.getElementById('keywords').value;
+                const extension = document.getElementById('extension').value;
+                const pattern = document.getElementById('pattern').value;
+                if (newLang && keywords && extension && pattern) {
+                    // Add to dropdown
+                    const select = document.getElementById('target-language');
+                    const option = document.createElement('option');
+                    option.value = newLang.toLowerCase();
+                    option.textContent = newLang;
+                    select.appendChild(option);
+                    select.value = newLang.toLowerCase();
+                    // Hide form
+                    document.getElementById('other-language-form').style.display = 'none';
+                    // Clear fields
+                    document.getElementById('new-language').value = '';
+                    document.getElementById('keywords').value = '';
+                    document.getElementById('extension').value = '';
+                    document.getElementById('pattern').value = '';
+                }
+            });
+
+            // Handle scan form submit
+            document.getElementById('scan-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const taskId = generateTaskId();
+                document.getElementById('task-id').value = taskId;
+                // Simulate scan
+                const resultsDiv = document.getElementById('scan-results');
+                const resultsContent = document.getElementById('results-content');
+                resultsContent.innerHTML = '<p>Scanning for files...</p>';
+                resultsDiv.style.display = 'block';
+                // Simulate results after 2 seconds
+                setTimeout(() => {
+                    resultsContent.innerHTML = `
+                        <div class="alert alert-success">Scan completed for Task ID: ${taskId}</div>
+                        <p>Found 5 files matching the criteria.</p>
+                        <ul>
+                            <li>file1.py</li>
+                            <li>file2.py</li>
+                            <li>file3.py</li>
+                            <li>file4.py</li>
+                            <li>file5.py</li>
+                        </ul>
+                    `;
+                }, 2000);
+            });
+
+            // Dropdown change
+            document.getElementById('lab-selector').addEventListener('change', renderSelectedView);
+
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = themeToggle.querySelector('i');
+
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (currentTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            }
+
+            themeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                const isDark = document.body.classList.contains('dark-mode');
+
+                if (isDark) {
+                    themeIcon.classList.remove('fa-moon');
+                    themeIcon.classList.add('fa-sun');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    themeIcon.classList.remove('fa-sun');
+                    themeIcon.classList.add('fa-moon');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        });
 
         const LAB_LAYOUTS = {
             lab1: {
@@ -673,44 +801,67 @@
         }
 
         function loadAgents() {
-            const loading = document.getElementById('agents-loading');
-            const container = document.getElementById('agents-container');
-            const noAgents = document.getElementById('no-agents');
+            console.log('loadAgents called');
 
-            loading.style.display = 'block';
-            container.style.display = 'none';
-            noAgents.style.display = 'none';
+            // Mock agent data
+            agentsData = [
+                { id: 1, name: 'Agent 1', ip: '10.20.9.101', ip_address: '10.20.9.101', status: 'offline', last_seen: new Date().toISOString() },
+                { id: 2, name: 'Agent 2', ip: '10.20.9.102', ip_address: '10.20.9.102', status: 'offline', last_seen: new Date().toISOString() },
+                { id: 3, name: 'Agent 3', ip: '10.20.9.103', ip_address: '10.20.9.103', status: 'offline', last_seen: new Date(Date.now() - 3600000).toISOString() },
+                { id: 4, name: 'Agent 4', ip: '10.20.9.104', ip_address: '10.20.9.104', status: 'offline', last_seen: new Date().toISOString() },
+                { id: 5, name: 'Agent 5', ip: '10.20.9.105', ip_address: '10.20.9.105', status: 'offline', last_seen: new Date(Date.now() - 7200000).toISOString() }
+            ];
 
-            Promise.all([
-                fetch('/clients-status').then(r => r.json()),
-                fetch('/files-preview').then(r => r.json())
-            ])
-            .then(([agents, files]) => {
-                loading.style.display = 'none';
+            // Mock files data
+            filesData = [
+                { id: 'test_001', agent_ip: '10.20.9.101', path: '/quarantine/test.py', status: 'pending', created_at: new Date().toISOString() },
+                { id: 'test_002', agent_ip: '10.20.9.102', path: '/quarantine/script.js', status: 'pending', created_at: new Date().toISOString() }
+            ];
 
-                if (agents.error) {
-                    console.error('Error loading agents:', agents.error);
-                    noAgents.style.display = 'block';
-                    return;
-                }
+            console.log('Mock data set:', agentsData.length, 'agents,', filesData.length, 'files');
 
-                agentsData = Array.isArray(agents) ? agents : [];
-                filesData = Array.isArray(files) ? files : [];
-                updateStats(agentsData, filesData);
-                renderSelectedView();
-                container.style.display = 'flex';
-            })
-            .catch(error => {
-                console.error('Error loading data:', error);
-                loading.style.display = 'none';
-                noAgents.style.display = 'block';
+            // Check if elements exist
+            const loadingEl = document.getElementById('agents-loading');
+            const containerEl = document.getElementById('agents-container');
+            const noAgentsEl = document.getElementById('no-agents');
+
+            console.log('Elements found:', {
+                loading: !!loadingEl,
+                container: !!containerEl,
+                noAgents: !!noAgentsEl
             });
+
+            // Hide loading and show content
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (containerEl) containerEl.style.display = 'flex';
+            if (noAgentsEl) noAgentsEl.style.display = 'none';
+
+            console.log('DOM updated, calling updateStats and renderSelectedView');
+
+            updateStats(agentsData, filesData);
+            renderSelectedView();
+
+            console.log('loadAgents completed');
         }
 
         function updateStats(agents, files) {
-            document.getElementById('total-agents').textContent = agents.length;
-            document.getElementById('online-agents').textContent = agents.filter(a => getAgentStatus(a) === 'online').length;
-            document.getElementById('pending-files').textContent = files.length;
+            console.log('updateStats called with', agents.length, 'agents,', files.length, 'files');
+
+            const totalEl = document.getElementById('total-agents');
+            const onlineEl = document.getElementById('online-agents');
+            const filesEl = document.getElementById('pending-files');
+
+            console.log('Stats elements found:', {
+                total: !!totalEl,
+                online: !!onlineEl,
+                files: !!filesEl
+            });
+
+            if (totalEl) totalEl.textContent = agents.length;
+            if (onlineEl) onlineEl.textContent = agents.filter(a => getAgentStatus(a) === 'online').length;
+            if (filesEl) filesEl.textContent = files.length;
+
+            console.log('Stats updated');
         }
 
         function updateLabMeta(items) {
@@ -719,14 +870,21 @@
         }
 
         function renderSelectedView() {
+            console.log('renderSelectedView called');
+
             const selected = document.getElementById('lab-selector').value;
+            console.log('Selected lab:', selected);
+
             const container = document.getElementById('agents-container');
             const noAgents = document.getElementById('no-agents');
+
+            console.log('Container and noAgents elements:', !!container, !!noAgents);
 
             container.innerHTML = '';
             noAgents.style.display = 'none';
 
             if (selected === 'other') {
+                console.log('Rendering other agents');
                 const otherAgents = getOtherAgents(agentsData);
                 updateLabMeta([
                     `Section: Other`,
@@ -744,10 +902,20 @@
                 return;
             }
 
+            console.log('Rendering lab layout for:', selected);
             const layout = LAB_LAYOUTS[selected];
+            console.log('Layout found:', !!layout);
+
+            if (!layout) {
+                console.error('Layout not found for:', selected);
+                return;
+            }
+
             const labAgents = getAgentsForLab(layout, agentsData);
             const totalSeats = getLabIps(layout).length;
             const onlineCount = labAgents.filter(a => getAgentStatus(a) === 'online').length;
+
+            console.log('Lab stats:', { totalSeats, onlineCount, labAgents: labAgents.length });
 
             updateLabMeta([
                 `Section: ${layout.title}`,
@@ -764,6 +932,8 @@
                     ${generateLabLayout(layout, agentsData)}
                 </div>
             `;
+
+            console.log('Lab layout rendered');
         }
 
         function generateLabLayout(layout, agents) {
@@ -968,45 +1138,12 @@
             }, 5000);
         }
 
-        // Form submission
-        document.getElementById('command-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitInstruction();
-        });
-
-        // Dropdown change
-        document.getElementById('lab-selector').addEventListener('change', renderSelectedView);
-
-        // Theme toggle functionality
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeIcon = themeToggle.querySelector('i');
-
-        const currentTheme = localStorage.getItem('theme') || 'light';
-        if (currentTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
-        }
-
-        themeToggle.addEventListener('click', function() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-
-            if (isDark) {
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
-                localStorage.setItem('theme', 'dark');
-            } else {
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
-                localStorage.setItem('theme', 'light');
-            }
-        });
-
         // Auto-refresh every 30 seconds
         setInterval(loadAgents, 30000);
 
+        console.log('Setting window.onload');
         window.onload = loadAgents;
+        console.log('Script initialization complete');
     </script>
 
     <!-- Modals for Detailed Views -->
