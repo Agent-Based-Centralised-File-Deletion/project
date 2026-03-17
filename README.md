@@ -177,10 +177,10 @@ project/
 ## Screenshots / Demo
 Add screenshots and demo links here:
 - Dashboard: `docs/screenshots/dashboard.png`
-- Dashboard: `docs/screenshots/dashboard.png`
-- Verification page: `docs/screenshots/verification.png`
-- Agent status layout: `docs/screenshots/agent-layout.png`
-- Demo video: `https://<your-demo-link>`
+- submit-task-success: `docs/screenshots/dashboard.png`
+- agent-layout: `docs/screenshots/verification.png`
+- verification: `docs/screenshots/agent-layout.png`
+
 
 ## Contributors
 - **Ms. J. Varsha**  
