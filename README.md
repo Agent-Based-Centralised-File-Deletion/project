@@ -177,6 +177,7 @@ project/
 ## Screenshots / Demo
 Add screenshots and demo links here:
 - Dashboard: `docs/screenshots/dashboard.png`
+- Dashboard: `docs/screenshots/dashboard.png`
 - Verification page: `docs/screenshots/verification.png`
 - Agent status layout: `docs/screenshots/agent-layout.png`
 - Demo video: `https://<your-demo-link>`
