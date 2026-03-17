@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
+from copy import deepcopy
 import os, re, hashlib
 from pathlib import Path
 from datetime import datetime
@@ -353,6 +354,77 @@ class PatternBasedDetector:
         'if', 'else', 'for', 'while', 'return', 'try', 'catch', 'case',
         'switch', 'break', 'continue', 'class', 'import'
     }
+
+    # Keep immutable built-ins so each task can cleanly rebuild detector maps.
+    DEFAULT_PATTERNS = deepcopy(PATTERNS)
+    DEFAULT_KEYWORDS = deepcopy(KEYWORDS)
+    DEFAULT_EXTENSIONS = deepcopy(EXTENSIONS)
+    DEFAULT_SIGNATURE_PATTERNS = deepcopy(SIGNATURE_PATTERNS)
+
+    @classmethod
+    def configure_custom_languages(cls, custom_languages: Dict[str, Any]):
+        """Merge per-task custom languages into detector maps."""
+        cls.PATTERNS = deepcopy(cls.DEFAULT_PATTERNS)
+        cls.KEYWORDS = deepcopy(cls.DEFAULT_KEYWORDS)
+        cls.EXTENSIONS = deepcopy(cls.DEFAULT_EXTENSIONS)
+        cls.SIGNATURE_PATTERNS = deepcopy(cls.DEFAULT_SIGNATURE_PATTERNS)
+
+        if not isinstance(custom_languages, dict):
+            return
+
+        for raw_name, raw_spec in custom_languages.items():
+            language = str(raw_name).strip().lower()
+            spec = raw_spec if isinstance(raw_spec, dict) else {}
+            if not language:
+                continue
+
+            patterns = []
+            for idx, item in enumerate(spec.get('patterns', []) or [], start=1):
+                if isinstance(item, dict):
+                    regex = str(item.get('regex', '')).strip()
+                    description = str(item.get('description', '')).strip() or f'custom pattern {idx}'
+                else:
+                    regex = str(item).strip()
+                    description = f'custom pattern {idx}'
+                if not regex:
+                    continue
+                try:
+                    re.compile(regex)
+                except re.error:
+                    logger.warning("Skipping invalid custom pattern for %s: %s", language, regex)
+                    continue
+                patterns.append((regex, description))
+            if not patterns:
+                logger.warning("Skipping custom language %s: no valid patterns", language)
+                continue
+
+            signatures = []
+            for sig in spec.get('signature_patterns', []) or []:
+                regex = str(sig).strip()
+                if not regex:
+                    continue
+                try:
+                    re.compile(regex)
+                except re.error:
+                    logger.warning("Skipping invalid custom signature for %s: %s", language, regex)
+                    continue
+                signatures.append(regex)
+
+            keywords = [str(k).strip() for k in (spec.get('keywords', []) or []) if str(k).strip()]
+
+            extensions = []
+            for ext in (spec.get('extensions', []) or []):
+                value = str(ext).strip().lower()
+                if not value:
+                    continue
+                if not value.startswith('.'):
+                    value = f'.{value}'
+                extensions.append(value)
+
+            cls.PATTERNS[language] = patterns
+            cls.KEYWORDS[language] = keywords
+            cls.EXTENSIONS[language] = sorted(set(extensions))
+            cls.SIGNATURE_PATTERNS[language] = signatures
     
     @staticmethod
     def _pattern_weight(description: str) -> float:
@@ -459,7 +531,10 @@ class PatternBasedDetector:
                 
                 # Check keywords
                 for keyword in PatternBasedDetector.KEYWORDS[lang]:
-                    regex = re.compile(r'\b' + re.escape(keyword) + r'\b')
+                    if re.match(r'^\w+$', keyword):
+                        regex = re.compile(r'\b' + re.escape(keyword) + r'\b')
+                    else:
+                        regex = re.compile(re.escape(keyword))
                     found = regex.findall(content)
                     if found:
                         score += min(len(found), 8) * PatternBasedDetector._keyword_weight(keyword)

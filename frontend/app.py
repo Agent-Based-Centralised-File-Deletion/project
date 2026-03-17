@@ -24,7 +24,10 @@ from shared.constants import HEARTBEAT_TIMEOUT
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI", "sqlite:///app.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+    "SQLALCHEMY_DATABASE_URI",
+    persistence.flask_database_uri(),
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 with app.app_context():
@@ -149,6 +152,88 @@ def _infer_languages_from_instruction(instruction: str):
     return list(inferred)
 
 
+def _normalize_custom_languages(raw_custom_languages):
+    if not isinstance(raw_custom_languages, dict):
+        return {}
+
+    normalized = {}
+    for raw_name, raw_spec in raw_custom_languages.items():
+        name = str(raw_name).strip().lower()
+        if not name:
+            continue
+        if name in SUPPORTED_LANGUAGES:
+            raise ValueError(f"Custom language '{name}' already exists as a built-in language")
+        if not isinstance(raw_spec, dict):
+            raise ValueError(f"Custom language spec for '{name}' must be an object")
+
+        raw_patterns = raw_spec.get("patterns", [])
+        patterns = []
+        if not isinstance(raw_patterns, list):
+            raise ValueError(f"patterns for '{name}' must be a list")
+        for idx, item in enumerate(raw_patterns, start=1):
+            if isinstance(item, dict):
+                regex = str(item.get("regex", "")).strip()
+                description = str(item.get("description", "")).strip() or f"custom pattern {idx}"
+            else:
+                regex = str(item).strip()
+                description = f"custom pattern {idx}"
+            if not regex:
+                continue
+            try:
+                re.compile(regex)
+            except re.error as exc:
+                raise ValueError(f"Invalid regex in patterns for '{name}': {regex} ({exc})")
+            patterns.append({"regex": regex, "description": description})
+        if not patterns:
+            raise ValueError(f"Custom language '{name}' requires at least one valid regex pattern")
+
+        raw_signatures = raw_spec.get("signature_patterns", [])
+        if raw_signatures is None:
+            raw_signatures = []
+        if not isinstance(raw_signatures, list):
+            raise ValueError(f"signature_patterns for '{name}' must be a list")
+        signature_patterns = []
+        for item in raw_signatures:
+            regex = str(item).strip()
+            if not regex:
+                continue
+            try:
+                re.compile(regex)
+            except re.error as exc:
+                raise ValueError(f"Invalid regex in signature_patterns for '{name}': {regex} ({exc})")
+            signature_patterns.append(regex)
+
+        raw_keywords = raw_spec.get("keywords", [])
+        if raw_keywords is None:
+            raw_keywords = []
+        if not isinstance(raw_keywords, list):
+            raise ValueError(f"keywords for '{name}' must be a list")
+        keywords = [str(k).strip() for k in raw_keywords if str(k).strip()]
+
+        raw_extensions = raw_spec.get("extensions", [])
+        if raw_extensions is None:
+            raw_extensions = []
+        if not isinstance(raw_extensions, list):
+            raise ValueError(f"extensions for '{name}' must be a list")
+        extensions = []
+        for ext in raw_extensions:
+            value = str(ext).strip().lower()
+            if not value:
+                continue
+            if not value.startswith("."):
+                value = f".{value}"
+            extensions.append(value)
+
+        normalized[name] = {
+            "patterns": patterns,
+            "signature_patterns": signature_patterns,
+            "keywords": keywords,
+            "extensions": sorted(set(extensions)),
+        }
+
+    return normalized
+
+
 def _flatten_pending_files(search: str = ""):
     return persistence.list_pending_files(search=search)
 
@@ -247,6 +332,7 @@ def submit_instruction():
         data = request.get_json(silent=True) or {}
         instruction = str(data.get("instruction", "")).strip()
         target_languages = data.get("target_languages")
+        custom_languages = data.get("custom_languages")
         scan_path = str(data.get("scan_path", "")).strip()
         raw_date_filter = data.get("date_filter")
 
@@ -256,7 +342,8 @@ def submit_instruction():
             target_languages = _infer_languages_from_instruction(instruction)
 
         target_languages = [str(x).lower().strip() for x in target_languages if str(x).strip()]
-        invalid = [x for x in target_languages if x not in SUPPORTED_LANGUAGES]
+        custom_languages = _normalize_custom_languages(custom_languages)
+        invalid = [x for x in target_languages if x not in SUPPORTED_LANGUAGES and x not in custom_languages]
         if invalid:
             return jsonify({"error": f"Unsupported languages: {invalid}"}), 400
         if not scan_path:
@@ -286,6 +373,7 @@ def submit_instruction():
             target_languages=target_languages,
             date_filter=date_filter,
             scan_paths=[scan_path],
+            custom_languages=custom_languages,
         )
         active_agents = get_active_agents()
         if not active_agents:
@@ -312,10 +400,13 @@ def submit_instruction():
             "message": f"Instruction dispatched to {dispatched} agent(s)",
             "task_id": task["task_id"],
             "target_languages": target_languages,
+            "custom_languages": custom_languages,
             "scan_path": scan_path,
             "date_filter": date_filter,
             "failed_agents": failed
         })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error("Error submitting instruction: %s", e)
         return jsonify({"error": "Internal server error"}), 500
