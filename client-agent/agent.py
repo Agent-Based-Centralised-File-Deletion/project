@@ -93,7 +93,10 @@ class ClientAgent:
         self.current_task = task
         
         # Extract task parameters
-        target_languages = task.get('target_languages', ['python', 'matlab', 'perl'])
+        target_languages = task.get(
+            'target_languages',
+            ['python', 'matlab', 'perl', 'java', 'javascript', 'html', 'css']
+        )
         date_filter = task.get('date_filter')
         
         # Scan files

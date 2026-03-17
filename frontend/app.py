@@ -12,13 +12,19 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from backend.api.instructions import create_scan_instruction, SUPPORTED_LANGUAGES
+from backend.api.instructions import create_scan_instruction
 from backend.orchestrator.agent_registry import get_active_agents, update_status
 from backend.network.protocol import send_message
 from backend.network.tcp_server import start_master
 from models import db, DeletionAuditLog
 from shared import persistence
 from shared.constants import HEARTBEAT_TIMEOUT
+from shared.languages import (
+    add_detector_language,
+    build_instruction_hint_mapping,
+    get_language_options,
+    get_supported_languages,
+)
 
 
 app = Flask(__name__)
@@ -69,15 +75,7 @@ def _is_online(raw_status: str, last_seen_ts, now_ts: float) -> bool:
 def _infer_languages_from_instruction(instruction: str):
     text = instruction.lower()
     inferred = set()
-
-    # Keep this conservative; default remains python if no clear hit.
-    mapping = {
-        "python": ["python", ".py"],
-        "matlab": ["matlab", ".m"],
-        "java": ["java", ".java"],
-        "cpp": ["c++", "cpp", ".cpp", ".cc"],
-        "c": [" c ", " c-language ", ".c "],
-    }
+    mapping = build_instruction_hint_mapping()
 
     padded = f" {text} "
     for lang, hints in mapping.items():
@@ -87,7 +85,8 @@ def _infer_languages_from_instruction(instruction: str):
                 break
 
     if not inferred:
-        inferred = {"python"}
+        supported_languages = get_language_options()
+        inferred = {supported_languages[0]["value"]} if supported_languages else {"python"}
     return list(inferred)
 
 
@@ -131,7 +130,7 @@ def _persist_audit_logs(records, action: str, notes: str = ""):
 
 @app.route("/")
 def dashboard():
-    return render_template("dashboard.html")
+    return render_template("dashboard.html", supported_languages=get_language_options())
 
 
 @app.route("/verification")
@@ -145,6 +144,7 @@ def submit_instruction():
         data = request.get_json(silent=True) or {}
         instruction = str(data.get("instruction", "")).strip()
         target_languages = data.get("target_languages")
+        supported_languages = get_supported_languages()
 
         if not target_languages:
             if not instruction:
@@ -152,7 +152,7 @@ def submit_instruction():
             target_languages = _infer_languages_from_instruction(instruction)
 
         target_languages = [str(x).lower().strip() for x in target_languages if str(x).strip()]
-        invalid = [x for x in target_languages if x not in SUPPORTED_LANGUAGES]
+        invalid = [x for x in target_languages if x not in supported_languages]
         if invalid:
             return jsonify({"error": f"Unsupported languages: {invalid}"}), 400
 
@@ -186,6 +186,71 @@ def submit_instruction():
         })
     except Exception as e:
         logger.error("Error submitting instruction: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+def _parse_csv_or_list(raw_value):
+    if isinstance(raw_value, list):
+        return [str(item).strip() for item in raw_value if str(item).strip()]
+    return [part.strip() for part in str(raw_value or "").split(",") if part.strip()]
+
+
+def _parse_patterns(raw_value):
+    if isinstance(raw_value, list):
+        parsed = []
+        for item in raw_value:
+            if not isinstance(item, dict):
+                continue
+            pattern = str(item.get("pattern", "")).strip()
+            description = str(item.get("description", "")).strip() or "custom pattern"
+            if pattern:
+                parsed.append({"pattern": pattern, "description": description})
+        return parsed
+
+    parsed = []
+    for line in str(raw_value or "").splitlines():
+        entry = line.strip()
+        if not entry:
+            continue
+        if "|" in entry:
+            pattern, description = entry.split("|", 1)
+        else:
+            pattern, description = entry, "custom pattern"
+        pattern = pattern.strip()
+        description = description.strip() or "custom pattern"
+        if pattern:
+            parsed.append({"pattern": pattern, "description": description})
+    return parsed
+
+
+@app.route("/add-language", methods=["POST"])
+def add_language():
+    try:
+        data = request.get_json(silent=True) or {}
+        language = str(data.get("language", "")).strip()
+        extensions = _parse_csv_or_list(data.get("extensions"))
+        keywords = _parse_csv_or_list(data.get("keywords"))
+        patterns = _parse_patterns(data.get("patterns"))
+        signature_patterns = _parse_csv_or_list(data.get("signature_patterns"))
+
+        added = add_detector_language(
+            language,
+            keywords=keywords,
+            extensions=extensions,
+            patterns=patterns,
+            signature_patterns=signature_patterns,
+        )
+
+        return jsonify({
+            "message": f"Language '{added['label']}' added to detector.py",
+            "language": added,
+            "supported_languages": get_language_options(),
+            "note": "Restart client agents to load the new detector rules."
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error("Error adding language: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 

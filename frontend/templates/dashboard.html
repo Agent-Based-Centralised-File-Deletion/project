@@ -315,10 +315,10 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-shield-alt me-2"></i>
-                File Deletion Admin
-            </a>
+                <a class="navbar-brand" href="/">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    <span data-lang="file-deletion-admin">File Deletion Admin</span>
+                </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -326,18 +326,27 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link active" href="/">
-                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            <i class="fas fa-tachometer-alt me-1"></i><span data-lang="dashboard">Dashboard</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/verification">
-                            <i class="fas fa-check-circle me-1"></i>Verification
+                            <i class="fas fa-check-circle me-1"></i><span data-lang="verification">Verification</span>
                         </a>
                     </li>
                 </ul>
                 <button class="theme-toggle ms-3" id="theme-toggle" title="Toggle Dark Mode">
                     <i class="fas fa-moon"></i>
                 </button>
+                
+                <!-- Language Selector -->
+                <div class="ms-2">
+                    <select id="language-selector" class="form-select form-select-sm" style="max-width: 120px; border-radius: 12px; font-size: 0.9rem;">
+                        <option value="en" data-lang-key="en">English</option>
+                        <option value="si" data-lang-key="si">සිංහල</option>
+                        <option value="ta" data-lang-key="ta">தமிழ்</option>
+                    </select>
+                </div>
             </div>
         </div>
     </nav>
@@ -346,9 +355,9 @@
         <!-- Header -->
         <div class="row mb-5">
             <div class="col-12">
-                <h1 class="display-4 text-center mb-3">
+<h1 class="display-4 text-center mb-3">
                     <i class="fas fa-desktop me-3"></i>
-                    Admin Dashboard
+                    <span data-lang="dashboard-title">Admin Dashboard</span>
                 </h1>
                 <p class="lead text-center text-muted">Manage file deletion commands across computer lab agents</p>
             </div>
@@ -401,46 +410,67 @@
                     <div class="card-body">
                         <form id="scan-form">
                             <div class="mb-3">
-                                <label for="task-id" class="form-label">Task ID</label>
-                                <input type="text" class="form-control" id="task-id" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label for="target-language" class="form-label">Target Language</label>
+                                <label for="target-language" class="form-label" data-lang="target-language">Target Language</label>
                                 <select class="form-select" id="target-language" required>
                                     <option value="">Select Language</option>
-                                    <option value="python">Python</option>
-                                    <option value="javascript">JavaScript</option>
-                                    <option value="java">Java</option>
-                                    <option value="c++">C++</option>
-                                    <option value="other">Other</option>
+                                    {% for language in supported_languages %}
+                                    <option value="{{ language.value }}">{{ language.label }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
-                            <div id="other-language-form" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="new-language" class="form-label">Target Language</label>
-                                    <input type="text" class="form-control" id="new-language" placeholder="e.g., MATLAB">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="keywords" class="form-label">Keywords</label>
-                                    <input type="text" class="form-control" id="keywords" placeholder="e.g., function,class">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="extension" class="form-label">Extension</label>
-                                    <input type="text" class="form-control" id="extension" placeholder="e.g., .m">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="pattern" class="form-label">Pattern</label>
-                                    <input type="text" class="form-control" id="pattern" placeholder="e.g., *.m">
-                                </div>
-                                <button type="button" class="btn btn-secondary" id="add-language-btn">Add Language</button>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" id="scan-btn">
+                                    <i class="fas fa-search me-2"></i>
+                                    <span data-lang="scan">Scan</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg" id="toggle-add-language-btn">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Add New Language
+                                </button>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-lg" id="scan-btn">
-                                <i class="fas fa-search me-2"></i>
-                                Scan
-                            </button>
                         </form>
+                        <div id="add-language-panel" class="card border-0 bg-light mt-4" style="display: none;">
+                            <div class="card-body">
+                                <h6 class="mb-3">Add New Language</h6>
+                                <form id="add-language-form">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="new-language-name" class="form-label">Language Name</label>
+                                            <input type="text" class="form-control" id="new-language-name" placeholder="e.g., ruby" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="new-language-extensions" class="form-label">Extensions</label>
+                                            <input type="text" class="form-control" id="new-language-extensions" placeholder=".rb, .rake">
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="new-language-keywords" class="form-label">Keywords</label>
+                                            <input type="text" class="form-control" id="new-language-keywords" placeholder="def, end, module, class">
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="new-language-patterns" class="form-label">Regex Patterns</label>
+                                            <textarea class="form-control" id="new-language-patterns" rows="4" placeholder="^\\s*def\\s+\\w+\\s* | function definition&#10;^\\s*module\\s+\\w+ | module declaration"></textarea>
+                                            <div class="form-text">One rule per line. Format: <code>regex | description</code></div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="new-language-signatures" class="form-label">Signature Patterns</label>
+                                            <textarea class="form-control" id="new-language-signatures" rows="3" placeholder="^\\s*def\\s+\\w+&#10;^\\s*class\\s+\\w+"></textarea>
+                                            <div class="form-text">One regex per line.</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                        <button type="submit" class="btn btn-success" id="save-language-btn">
+                                            <i class="fas fa-floppy-disk me-2"></i>
+                                            Save Language
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="cancel-add-language-btn">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                         <div id="scan-results" class="mt-4" style="display: none;">
-                            <h6>Scan Results</h6>
+                            <h6 data-lang="scan-results">Scan Results</h6>
                             <div id="results-content">
                                 <!-- Results will be shown here -->
                             </div>
@@ -516,73 +546,261 @@
 
         const LAP_ICON_SRC = "lapIcon.png";
 
-        // Generate task ID
-        function generateTaskId() {
-            return 'TASK-' + Date.now();
-        }
-
-        // Set initial task ID on load
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('task-id').value = generateTaskId();
-
-            // Handle language dropdown change
-            document.getElementById('target-language').addEventListener('change', function() {
-                const otherForm = document.getElementById('other-language-form');
-                if (this.value === 'other') {
-                    otherForm.style.display = 'block';
-                } else {
-                    otherForm.style.display = 'none';
+            const languageSelector = document.getElementById('language-selector');
+            const scanForm = document.getElementById('scan-form');
+            const scanBtn = document.getElementById('scan-btn');
+            const targetLanguage = document.getElementById('target-language');
+            const scanResults = document.getElementById('scan-results');
+            const resultsContent = document.getElementById('results-content');
+            const toggleAddLanguageBtn = document.getElementById('toggle-add-language-btn');
+            const addLanguagePanel = document.getElementById('add-language-panel');
+            const addLanguageForm = document.getElementById('add-language-form');
+            const saveLanguageBtn = document.getElementById('save-language-btn');
+            const cancelAddLanguageBtn = document.getElementById('cancel-add-language-btn');
+            const newLanguageName = document.getElementById('new-language-name');
+            const newLanguageExtensions = document.getElementById('new-language-extensions');
+            const newLanguageKeywords = document.getElementById('new-language-keywords');
+            const newLanguagePatterns = document.getElementById('new-language-patterns');
+            const newLanguageSignatures = document.getElementById('new-language-signatures');
+            const translations = {
+                en: {
+                    'dashboard-title': 'Admin Dashboard',
+                    'file-deletion-admin': 'File Deletion Admin',
+                    'dashboard': 'Dashboard',
+                    'verification': 'Verification',
+                    'total-agents': 'Total Agents',
+                    'online-agents': 'Online Agents',
+                    'pending-files': 'Pending Files',
+                    'target-language': 'Target Language',
+                    'scan': 'Scan',
+                    'scan-results': 'Scan Results',
+                    'agent-status-overview': 'Agent Status Overview',
+                    'select-section': 'Select Section',
+                    'loading-agents': 'Loading agents...',
+                    'no-agents': 'No agents found in the system'
+                },
+                si: {
+                    'dashboard-title': 'පරිපාලක පුවරුව',
+                    'file-deletion-admin': 'කඩනාම් මකා දමන පරිපාලක',
+                    'dashboard': 'පුවරුව',
+                    'verification': 'ගුණාත්මකභාවය',
+                    'total-agents': 'මුළු ඒජන්ට්',
+                    'online-agents': 'අන්තර්ජාල ඒජන්ට්',
+                    'pending-files': 'ප්‍රබල කිරීම් කරන ලද ගොනු',
+                    'target-language': 'ඉලක්ක භාෂාව',
+                    'scan': 'ස්කෑන් කරන්න',
+                    'scan-results': 'ස්කෑන් ප්‍රතිඵල',
+                    'agent-status-overview': 'ඒජන්ට් තත්ත්ව සාරාංශය',
+                    'select-section': 'කොටස තෝරන්න',
+                    'loading-agents': 'ඒජන්ට් පූරණය වෙමින්...',
+                    'no-agents': 'පද්ධතියේ ඒජන්ට් සොයාගන්නට නොහැක'
+                },
+                ta: {
+                    'dashboard-title': 'நிர்வாக டாஷ்போர்டு',
+                    'file-deletion-admin': 'கோப்பு நீக்கல் நிர்வாகி',
+                    'dashboard': 'டாஷ்போர்டு',
+                    'verification': 'சரிபார்ப்பு',
+                    'total-agents': 'மொத்த முகவர்கள்',
+                    'online-agents': 'ஆன்லைன் முகவர்கள்',
+                    'pending-files': 'நிலுவையில் உள்ள கோப்புகள்',
+                    'target-language': 'இலக்கு மொழி',
+                    'scan': 'மேல்வதிவாக்கம்',
+                    'scan-results': 'மேல்வதிவாக்கம் முடிவுகள்',
+                    'agent-status-overview': 'முகவர் நிலை சுருக்கம்',
+                    'select-section': 'பிரிவைத் தேர்ந்தெடுக்கவும்',
+                    'loading-agents': 'முகவர்கள் ஏற்றுகிறது...',
+                    'no-agents': 'முகவர்கள் கிடைக்கவில்லை'
                 }
-            });
+            };
 
-            // Handle add language button
-            document.getElementById('add-language-btn').addEventListener('click', function() {
-                const newLang = document.getElementById('new-language').value;
-                const keywords = document.getElementById('keywords').value;
-                const extension = document.getElementById('extension').value;
-                const pattern = document.getElementById('pattern').value;
-                if (newLang && keywords && extension && pattern) {
-                    // Add to dropdown
-                    const select = document.getElementById('target-language');
+            function parseCommaSeparated(value) {
+                return value
+                    .split(',')
+                    .map(item => item.trim())
+                    .filter(Boolean);
+            }
+
+            function parsePatternLines(value) {
+                return value
+                    .split('\n')
+                    .map(line => line.trim())
+                    .filter(Boolean)
+                    .map(line => {
+                        const parts = line.split('|');
+                        const pattern = (parts.shift() || '').trim();
+                        const description = parts.join('|').trim() || 'custom pattern';
+                        return { pattern, description };
+                    })
+                    .filter(item => item.pattern);
+            }
+
+            function replaceLanguageOptions(options, selectedValue = '') {
+                targetLanguage.innerHTML = '<option value="">Select Language</option>';
+
+                options.forEach(optionData => {
                     const option = document.createElement('option');
-                    option.value = newLang.toLowerCase();
-                    option.textContent = newLang;
-                    select.appendChild(option);
-                    select.value = newLang.toLowerCase();
-                    // Hide form
-                    document.getElementById('other-language-form').style.display = 'none';
-                    // Clear fields
-                    document.getElementById('new-language').value = '';
-                    document.getElementById('keywords').value = '';
-                    document.getElementById('extension').value = '';
-                    document.getElementById('pattern').value = '';
+                    option.value = optionData.value;
+                    option.textContent = optionData.label;
+                    targetLanguage.appendChild(option);
+                });
+
+                if (selectedValue) {
+                    targetLanguage.value = selectedValue;
                 }
+            }
+
+            function setAddLanguagePanelVisible(visible) {
+                addLanguagePanel.style.display = visible ? 'block' : 'none';
+                toggleAddLanguageBtn.innerHTML = visible
+                    ? '<i class="fas fa-xmark me-2"></i>Close Add Language'
+                    : '<i class="fas fa-plus me-2"></i>Add New Language';
+            }
+
+            function resetAddLanguageForm() {
+                addLanguageForm.reset();
+            }
+
+            function updateLanguage(lang) {
+                document.documentElement.lang = lang;
+                localStorage.setItem('uiLanguage', lang);
+                
+                Object.keys(translations[lang]).forEach(key => {
+                    const elements = document.querySelectorAll(`[data-lang="${key}"]`);
+                    elements.forEach(el => el.textContent = translations[lang][key]);
+                });
+            }
+
+            // Load saved language
+            const savedLang = localStorage.getItem('uiLanguage') || 'en';
+            languageSelector.value = savedLang;
+            updateLanguage(savedLang);
+
+            languageSelector.addEventListener('change', function() {
+                updateLanguage(this.value);
             });
 
-            // Handle scan form submit
-            document.getElementById('scan-form').addEventListener('submit', function(e) {
+            toggleAddLanguageBtn.addEventListener('click', function() {
+                const nextVisible = addLanguagePanel.style.display === 'none';
+                setAddLanguagePanelVisible(nextVisible);
+            });
+
+            cancelAddLanguageBtn.addEventListener('click', function() {
+                resetAddLanguageForm();
+                setAddLanguagePanelVisible(false);
+            });
+
+            addLanguageForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                const taskId = generateTaskId();
-                document.getElementById('task-id').value = taskId;
-                // Simulate scan
-                const resultsDiv = document.getElementById('scan-results');
-                const resultsContent = document.getElementById('results-content');
-                resultsContent.innerHTML = '<p>Scanning for files...</p>';
-                resultsDiv.style.display = 'block';
-                // Simulate results after 2 seconds
-                setTimeout(() => {
+
+                const language = newLanguageName.value.trim();
+                if (!language) {
+                    showAlert('Please enter a language name', 'warning');
+                    return;
+                }
+
+                const payload = {
+                    language: language,
+                    extensions: parseCommaSeparated(newLanguageExtensions.value),
+                    keywords: parseCommaSeparated(newLanguageKeywords.value),
+                    patterns: parsePatternLines(newLanguagePatterns.value),
+                    signature_patterns: newLanguageSignatures.value
+                        .split('\n')
+                        .map(item => item.trim())
+                        .filter(Boolean),
+                };
+
+                const originalText = saveLanguageBtn.innerHTML;
+                saveLanguageBtn.disabled = true;
+                saveLanguageBtn.innerHTML = '<div class="loading-spinner me-2"></div>Saving...';
+
+                fetch('/add-language', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    saveLanguageBtn.disabled = false;
+                    saveLanguageBtn.innerHTML = originalText;
+
+                    if (data.error) {
+                        showAlert('Error: ' + data.error, 'danger');
+                        return;
+                    }
+
+                    replaceLanguageOptions(data.supported_languages || [], data.language?.value || '');
+                    resetAddLanguageForm();
+                    setAddLanguagePanelVisible(false);
+                    showAlert(`${data.message} ${data.note || ''}`.trim(), 'success');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    saveLanguageBtn.disabled = false;
+                    saveLanguageBtn.innerHTML = originalText;
+                    showAlert('An error occurred while adding the new language', 'danger');
+                });
+            });
+
+            scanForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const selectedLanguage = targetLanguage.value;
+
+                if (!selectedLanguage) {
+                    showAlert('Please select a target language', 'warning');
+                    return;
+                }
+
+                const originalText = scanBtn.innerHTML;
+                scanBtn.disabled = true;
+                scanBtn.innerHTML = '<div class="loading-spinner me-2"></div>Scanning...';
+
+                scanResults.style.display = 'block';
+                resultsContent.innerHTML = '<p>Dispatching scan task...</p>';
+
+                fetch('/submit-instruction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        target_languages: [selectedLanguage],
+                        instruction: `Scan for ${selectedLanguage} files`
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    scanBtn.disabled = false;
+                    scanBtn.innerHTML = originalText;
+
+                    if (data.error) {
+                        resultsContent.innerHTML = `<div class="alert alert-danger mb-0">${data.error}</div>`;
+                        showAlert('Error: ' + data.error, 'danger');
+                        return;
+                    }
+
+                    const failedAgents = Array.isArray(data.failed_agents) && data.failed_agents.length
+                        ? `<p class="mb-0 text-warning">Failed agents: ${data.failed_agents.join(', ')}</p>`
+                        : '';
+
                     resultsContent.innerHTML = `
-                        <div class="alert alert-success">Scan completed for Task ID: ${taskId}</div>
-                        <p>Found 5 files matching the criteria.</p>
-                        <ul>
-                            <li>file1.py</li>
-                            <li>file2.py</li>
-                            <li>file3.py</li>
-                            <li>file4.py</li>
-                            <li>file5.py</li>
-                        </ul>
+                        <div class="alert alert-success mb-2">Scan task dispatched successfully.</div>
+                        <p class="mb-1"><strong>Task ID:</strong> ${data.task_id}</p>
+                        <p class="mb-1"><strong>Target language:</strong> ${selectedLanguage}</p>
+                        <p class="mb-2"><strong>Message:</strong> ${data.message}</p>
+                        ${failedAgents}
                     `;
-                }, 2000);
+                    showAlert(data.message, 'success');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    scanBtn.disabled = false;
+                    scanBtn.innerHTML = originalText;
+                    resultsContent.innerHTML = '<div class="alert alert-danger mb-0">An error occurred while submitting the scan task.</div>';
+                    showAlert('An error occurred while submitting the scan task', 'danger');
+                });
             });
 
             // Dropdown change

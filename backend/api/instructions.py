@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime
 
-
-SUPPORTED_LANGUAGES = {"python", "matlab", "c", "cpp", "java"}
+from shared.languages import get_supported_languages
 
 
 def create_scan_instruction(
@@ -16,7 +15,8 @@ def create_scan_instruction(
     if not target_languages:
         raise ValueError("At least one target language must be specified")
 
-    invalid = set(target_languages) - SUPPORTED_LANGUAGES
+    supported_languages = get_supported_languages()
+    invalid = set(target_languages) - supported_languages
     if invalid:
         raise ValueError(f"Unsupported languages: {invalid}")
 
