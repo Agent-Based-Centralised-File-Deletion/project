@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent-Based Centralized File Deletion System</title>
+  <meta name="description" content="Project website for an agent-based centralized file deletion system for computer labs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="hero" id="top">
+    <nav class="nav">
+      <a href="#top" class="brand">NetProject v2</a>
+      <button id="menuToggle" class="menu-toggle" aria-label="Toggle navigation">Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a href="#overview">Overview</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#stack">Stack</a>
+        <a href="#deployment">Deployment</a>
+      </div>
+    </nav>
+
+    <div class="hero-inner">
+      <p class="eyebrow">Project Submission Website</p>
+      <h1>Agent-Based System for Centralized File Deletion</h1>
+      <p class="subtext">
+        A coordinated platform where a central admin service dispatches file scanning and deletion tasks to lab agents, with a verification-first approval process.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#overview">Explore Project</a>
+        <a class="btn btn-ghost" href="#deployment">Deploy on Vercel</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="overview" class="section reveal">
+      <h2>Overview</h2>
+      <p>
+        This system helps administrators manage unsafe or outdated files across multiple lab machines from one control point. It combines command dispatching, client status tracking, file preview, and approval-gated deletion to reduce accidental data loss.
+      </p>
+      <div class="grid two">
+        <article class="card">
+          <h3>Core Problem</h3>
+          <p>
+            Manual cleanup across many computers is slow, inconsistent, and hard to audit.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Solution</h3>
+          <p>
+            A networked multi-agent system with admin verification before destructive actions.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="architecture" class="section reveal">
+      <h2>Architecture</h2>
+      <div class="grid three">
+        <article class="card">
+          <h3>Backend (Master)</h3>
+          <p>Handles orchestration, task dispatch, agent registry, and result collection.</p>
+        </article>
+        <article class="card">
+          <h3>Client Agent</h3>
+          <p>Scans target files, reports findings, and executes deletion only when approved.</p>
+        </article>
+        <article class="card">
+          <h3>Admin UI</h3>
+          <p>Flask-based dashboard for submitting instructions and approving file operations.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="workflow" class="section reveal">
+      <h2>Operational Workflow</h2>
+      <ol class="timeline">
+        <li><span>1</span> Admin submits a natural-language deletion instruction.</li>
+        <li><span>2</span> Backend distributes scan tasks to online agents.</li>
+        <li><span>3</span> Agents return candidate files for review.</li>
+        <li><span>4</span> Admin approves or rejects pending file actions.</li>
+        <li><span>5</span> Approved files are deleted and actions are logged.</li>
+      </ol>
+    </section>
+
+    <section id="stack" class="section reveal">
+      <h2>Technology Stack</h2>
+      <div class="chips">
+        <span>Python</span>
+        <span>Flask</span>
+        <span>SQLAlchemy</span>
+        <span>SQLite</span>
+        <span>TCP Networking</span>
+        <span>Docker</span>
+        <span>HTML/CSS/JavaScript</span>
+      </div>
+    </section>
+
+    <section id="deployment" class="section reveal">
+      <h2>Vercel Deployment</h2>
+      <p>
+        This website is static and Vercel-ready. Point Vercel to the <code>website</code> directory as the project root.
+      </p>
+      <div class="card">
+        <h3>Quick Steps</h3>
+        <ol>
+          <li>Push this repository to GitHub/GitLab/Bitbucket.</li>
+          <li>Create a new Vercel project and import the repository.</li>
+          <li>Set Root Directory to <code>website</code>.</li>
+          <li>Framework Preset: <code>Other</code> (or auto-detected static).</li>
+          <li>Deploy.</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Agent-Based Centralized File Deletion System • 2026</p>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>

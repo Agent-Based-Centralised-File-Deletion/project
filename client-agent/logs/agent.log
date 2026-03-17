@@ -126,3 +126,5 @@
 2026-03-16 16:05:47,633 - ClientAgent - INFO - Scanning directory: D:\4S1\Net2\project\client-agent\scan-targets
 2026-03-16 16:05:47,635 - ClientAgent - INFO - Found 7 files to analyze
 2026-03-16 16:05:47,695 - ClientAgent - INFO - No files found matching criteria
+2026-03-16 16:45:11,394 - ClientAgent - ERROR - Failed to receive message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-03-16 16:45:11,407 - ClientAgent - WARNING - Disconnected from master, reconnecting...

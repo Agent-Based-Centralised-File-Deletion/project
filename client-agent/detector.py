@@ -254,7 +254,7 @@ class PatternBasedDetector:
         except Exception as e:
             logger.warning(f"Error checking binary status for {filepath}: {e}")
             return True
-    
+
     @staticmethod
     def analyze_file(filepath: str) -> FileAnalysisResult:
         """Analyze a file and determine if it contains code"""
@@ -266,7 +266,7 @@ class PatternBasedDetector:
             
             # Calculate file hash
             file_hash = PatternBasedDetector._calculate_hash(filepath)
-            
+
             # Step 1: Check if binary
             if PatternBasedDetector.is_binary(filepath):
                 return FileAnalysisResult(
@@ -281,7 +281,7 @@ class PatternBasedDetector:
                     reason='Binary file, not code',
                     file_hash=file_hash
                 )
-            
+
             # Step 2: Check file extension
             ext = Path(filepath).suffix.lower()
             extension_lang = None
@@ -289,7 +289,7 @@ class PatternBasedDetector:
                 if ext in exts:
                     extension_lang = lang
                     break
-            
+
             # Step 3: Read file content
             try:
                 with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -308,22 +308,22 @@ class PatternBasedDetector:
                     reason=f'Error reading file: {str(e)}',
                     file_hash=file_hash
                 )
-            
+
             # Step 4: Pattern-based analysis
             scores = {}
             pattern_matches = {}
-            
+
             for lang, patterns in PatternBasedDetector.PATTERNS.items():
                 score = 0
                 matches = []
-                
+
                 # Check patterns
                 for pattern, description in patterns:
                     found = re.findall(pattern, content, re.MULTILINE)
                     if found:
                         score += len(found) * PatternBasedDetector._pattern_weight(description)
                         matches.append(f"{description} ({len(found)}x)")
-                
+
                 # Check keywords
                 for keyword in PatternBasedDetector.KEYWORDS[lang]:
                     regex = re.compile(r'\b' + re.escape(keyword) + r'\b')
@@ -337,16 +337,16 @@ class PatternBasedDetector:
                     if re.search(sig_pattern, content, re.MULTILINE):
                         signature_hits += 1
                 score += signature_hits * 4
-                
+
                 # Bonus for code structure
                 if re.search(r'^[ \t]+\w', content, re.MULTILINE):
                     score += 3  # Indented code
                 if re.search(r'[\{\}\[\]\(\)]', content):
                     score += 2  # Brackets/braces
-                
+
                 scores[lang] = score
                 pattern_matches[lang] = matches
-            
+
             # Determine language and confidence
             if not scores or max(scores.values()) == 0:
                 detected_lang = 'none'
@@ -354,18 +354,18 @@ class PatternBasedDetector:
             else:
                 detected_lang = max(scores, key=scores.get)
                 max_score = scores[detected_lang]
-            
+
             sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
             second_best_score = sorted_scores[1][1] if len(sorted_scores) > 1 else 0
             score_margin = max_score - second_best_score
 
             # Confidence combines absolute evidence and separation from the next-best language.
             confidence = min(1.0, ((max_score / 40.0) * 0.7) + ((score_margin / 20.0) * 0.3))
-            
+
             # Small confidence boost for matching extension (weak signal only).
             if extension_lang == detected_lang:
                 confidence = min(confidence + 0.08, 1.0)
-            
+
             # Make decision
             if confidence > 0.78 and score_margin >= 4:
                 decision = 'delete'
@@ -376,7 +376,7 @@ class PatternBasedDetector:
             else:
                 decision = 'ambiguous'
                 reason = f"Medium confidence {detected_lang} code (score: {max_score}), needs LLM verification"
-            
+
             return FileAnalysisResult(
                 filepath=filepath,
                 filename=filename,
@@ -389,7 +389,7 @@ class PatternBasedDetector:
                 reason=reason,
                 file_hash=file_hash
             )
-            
+
         except Exception as e:
             logger.error(f"Error analyzing {filepath}: {e}")
             return FileAnalysisResult(
