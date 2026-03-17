@@ -95,9 +95,13 @@ class ClientAgent:
         
         # Extract task parameters
         target_languages = task.get('target_languages', ['python', 'matlab', 'perl'])
+        custom_languages = task.get('custom_languages', {})
         date_filter = self._parse_date_filter(task.get('date_filter'))
         scan_paths = [str(p).strip() for p in task.get('scan_paths', []) if str(p).strip()]
         scanner = FileScanner(scan_paths) if scan_paths else self.scanner
+
+        # Apply custom language definitions for this task.
+        self.detector.configure_custom_languages(custom_languages)
         
         # Scan files
         files = scanner.scan(date_filter=date_filter)

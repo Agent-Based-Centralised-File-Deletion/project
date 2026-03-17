@@ -124,7 +124,8 @@ The application includes a comprehensive dark mode theme that can be toggled usi
 
 - Mock data is regenerated on each app restart
 - Debug mode enabled by default (disable in production)
-- SQLite database stored in `app.db`
+- Preferred DB: managed PostgreSQL via `APP_DATABASE_URL` (works with provider UI dashboards like Neon/Supabase)
+- SQLite fallback: set `APP_DB_PATH` for local file-based storage
 - Auto-refresh every 30-60 seconds for live updates
 - Responsive design tested on multiple screen sizes
 

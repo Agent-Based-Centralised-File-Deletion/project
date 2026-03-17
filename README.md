@@ -21,14 +21,14 @@ CodeSweep is an agent-based file governance system with:
 - A backend TCP master server for agent orchestration
 - A Flask admin frontend for task submission and verification
 - Lightweight client agents that scan, detect, quarantine, and report
-- Shared SQLite persistence for agent status, pending files, and audit trails
+- Shared persistence for agent status, pending files, and audit trails (PostgreSQL recommended; SQLite supported for local fallback)
 
 ## System Architecture / Design
 ### Components
 - `frontend` (Flask Admin UI + REST endpoints)
 - `backend` (master TCP server + connection handlers + orchestrator)
 - `client-agent` (scanner, detector, quarantine manager, TCP client)
-- `shared` (SQLite persistence and shared schemas/constants)
+- `shared` (DB persistence and shared schemas/constants)
 
 ### High-Level Workflow
 1. Admin selects target languages, scan path, and optional date filter in dashboard.
@@ -44,7 +44,7 @@ CodeSweep is an agent-based file governance system with:
 ```mermaid
 flowchart LR
     A[Admin Browser] --> B[Frontend Flask App]
-    B --> C[(SQLite app.db)]
+    B --> C[(PostgreSQL / SQLite)]
     B --> D[Backend TCP Master]
     D <--> E[Client Agent 1]
     D <--> F[Client Agent 2]
@@ -57,7 +57,7 @@ flowchart LR
 ## Technologies Used
 - Programming Languages: Python, HTML, CSS, JavaScript
 - Backend Frameworks/Libraries: Flask, Flask-SQLAlchemy, WTForms
-- Database: SQLite
+- Database: PostgreSQL (recommended), SQLite (local fallback)
 - Networking: TCP sockets (custom protocol)
 - Frontend UI: Bootstrap 5, Font Awesome
 - Deployment/Tooling: Docker, Docker Compose
@@ -109,6 +109,9 @@ Environment variables commonly used:
 - `SCAN_DIRS` (comma-separated directories)
 - `QUARANTINE_DIR`
 - `LOG_DIR`
+- `APP_DATABASE_URL` (recommended shared DB URL for frontend + backend persistence)
+  - Example PostgreSQL: `postgresql+psycopg://USER:PASSWORD@HOST:5432/DBNAME`
+- `APP_DB_PATH` (optional SQLite fallback path)
 
 ## Usage Instructions
 1. Open dashboard at `http://localhost:5001/`.

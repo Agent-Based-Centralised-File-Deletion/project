@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Verification - File Deletion System</title>
+    <title>CodeSweep - File Verification</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -13,8 +13,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <i class="fas fa-shield-alt me-2"></i>
-                File Deletion Admin
+                <img src="{{ url_for('static', filename='codesweep-logo.svg') }}" alt="CodeSweep" class="brand-logo me-2">
+                CodeSweep
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -213,7 +213,7 @@
         <div class="container text-center">
             <p class="mb-0">
                 <i class="fas fa-copyright me-1"></i>
-                2026 Agent-Based File Deletion System - Admin Interface
+                2026 CodeSweep - Admin Interface
             </p>
         </div>
     </footer>
