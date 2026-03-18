@@ -216,4 +216,3 @@ Add screenshots and demo links here:
 ## Licence
 This project is released under the **MIT License**.
 
-Add a `LICENSE` file at the repository root with MIT terms if not already present.
