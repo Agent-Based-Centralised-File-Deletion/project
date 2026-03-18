@@ -211,7 +211,7 @@ Add screenshots and demo links here:
 ## Contact Information
 - Team Lead: Ms. J. Varsha
 - Email: varshajeyaraj@gmail.com
-- Institution: Department of Computer Science (replace with official institution name if needed)
+- Institution: Department of Computer Science, University of Jaffna
 
 ## Licence
 This project is released under the **MIT License**.
