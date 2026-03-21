@@ -25,13 +25,14 @@ def create_scan_instruction(
     target_languages,
     date_filter=None,
     scan_paths=None,
-    custom_languages=None
+    custom_languages=None,
+    clear_all=False
 ):
     """
     Converts admin intent into a structured scan task.
     """
 
-    if not target_languages:
+    if not target_languages and not clear_all:
         raise ValueError("At least one target language must be specified")
 
     custom_languages = custom_languages or {}
@@ -47,6 +48,7 @@ def create_scan_instruction(
         "date_filter": date_filter,
         "scan_paths": list(scan_paths or []),
         "custom_languages": custom_languages,
+        "clear_all": bool(clear_all),
         "created_at": datetime.utcnow().isoformat()
     }
 

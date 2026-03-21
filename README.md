@@ -106,7 +106,7 @@ python agent.py
 Environment variables commonly used:
 - `MASTER_IP` / `BACKEND_HOST`
 - `MASTER_PORT` / `BACKEND_PORT`
-- `SCAN_DIRS` (comma-separated directories)
+- `SCAN_DIRS` (optional comma-separated fallback directories; no built-in default is used)
 - `QUARANTINE_DIR`
 - `LOG_DIR`
 - `APP_DATABASE_URL` (recommended shared DB URL for frontend + backend persistence)

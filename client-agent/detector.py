@@ -562,10 +562,23 @@ class PatternBasedDetector:
             else:
                 detected_lang = max(scores, key=scores.get)
                 max_score = scores[detected_lang]
-            
-            sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-            second_best_score = sorted_scores[1][1] if len(sorted_scores) > 1 else 0
-            score_margin = max_score - second_best_score
+
+            # C and C++ overlap strongly. If extension says .cpp/.cc/etc and the
+            # C++ score is close, prefer reporting C++ for clearer UI output.
+            if (
+                detected_lang == 'c'
+                and extension_lang == 'cpp'
+                and scores.get('cpp', 0) > 0
+                and (scores.get('c', 0) - scores.get('cpp', 0)) <= 6
+            ):
+                detected_lang = 'cpp'
+                max_score = scores['cpp']
+
+            second_best_score = max(
+                (score for lang, score in scores.items() if lang != detected_lang),
+                default=0
+            )
+            score_margin = max(0, max_score - second_best_score)
 
             # Confidence combines absolute evidence and separation from the next-best language.
             confidence = min(1.0, ((max_score / 40.0) * 0.7) + ((score_margin / 20.0) * 0.3))
