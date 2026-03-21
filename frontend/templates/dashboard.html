@@ -375,8 +375,22 @@
             font-size: 0.92rem;
         }
 
-        .dashboard-shell #target-language {
+        .dashboard-shell .language-checklist {
             min-height: 8.4rem;
+            max-height: 16rem;
+            overflow-y: auto;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.75rem;
+            padding: 0.65rem 0.8rem;
+            background: var(--bs-body-bg);
+        }
+
+        .dashboard-shell .language-checklist .form-check {
+            margin-bottom: 0.45rem;
+        }
+
+        .dashboard-shell .language-checklist .form-check:last-child {
+            margin-bottom: 0;
         }
 
         .dashboard-shell #custom-language-form .card-body {
@@ -512,10 +526,10 @@
                                 </div>
                                 <div class="col-lg-7">
                                     <label for="target-language" class="form-label">Target Languages</label>
-                                    <select class="form-select" id="target-language" multiple required size="6">
-                                        <option value="">Loading languages...</option>
-                                    </select>
-                                    <small class="text-muted">Use Ctrl/Cmd + click to select multiple languages.</small>
+                                    <div id="target-language" class="language-checklist" role="group" aria-label="Target Languages">
+                                        <div class="text-muted small">Loading languages...</div>
+                                    </div>
+                                    <small class="text-muted">Use the checkboxes to choose one or more target languages.</small>
                                 </div>
                                 <div class="col-lg-5">
                                     <label for="date-start" class="form-label">Modified After (Optional)</label>
@@ -635,6 +649,8 @@
         let LAB_LAYOUTS = {};
         const LAP_ICON_SRC = "lapIcon.png";
         const OTHER_LANGUAGE_VALUE = "__other__";
+        const CLEAR_ALL_FILES_VALUE = "__clear_all_files__";
+        const SELECT_ALL_LANGUAGES_VALUE = "__select_all_languages__";
 
         function generateTaskId() {
             return "";
@@ -664,15 +680,116 @@
                 .filter(Boolean);
         }
 
+        function getTargetLanguageCheckboxes() {
+            return Array.from(document.querySelectorAll('#target-language input[type="checkbox"]'));
+        }
+
+        function getCheckedTargetLanguageValues() {
+            return getTargetLanguageCheckboxes()
+                .filter((input) => input.checked)
+                .map((input) => input.value);
+        }
+
         function isOtherLanguageSelected() {
-            const selected = Array.from(document.getElementById("target-language").selectedOptions)
-                .map((option) => option.value);
-            return selected.includes(OTHER_LANGUAGE_VALUE);
+            return getCheckedTargetLanguageValues().includes(OTHER_LANGUAGE_VALUE);
         }
 
         function toggleCustomLanguageForm() {
             const customForm = document.getElementById("custom-language-form");
             customForm.style.display = isOtherLanguageSelected() ? "block" : "none";
+        }
+
+        function createLanguageCheckbox(value, label) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "form-check";
+
+            const input = document.createElement("input");
+            input.className = "form-check-input";
+            input.type = "checkbox";
+            input.value = value;
+            input.id = `target-language-${value.replace(/[^a-z0-9_-]/gi, "-")}`;
+
+            const labelEl = document.createElement("label");
+            labelEl.className = "form-check-label";
+            labelEl.htmlFor = input.id;
+            labelEl.textContent = label;
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(labelEl);
+            return wrapper;
+        }
+
+        function renderTargetLanguageOptions(languages) {
+            const container = document.getElementById("target-language");
+            container.innerHTML = "";
+
+            const options = [
+                { value: CLEAR_ALL_FILES_VALUE, label: "Clear all folders and files" },
+                { value: SELECT_ALL_LANGUAGES_VALUE, label: "Select all languages" },
+                ...languages.map((item) => ({
+                    value: item.value,
+                    label: item.label || labelFromLanguage(item.value)
+                })),
+                { value: OTHER_LANGUAGE_VALUE, label: "Other" }
+            ];
+
+            options.forEach((item) => {
+                container.appendChild(createLanguageCheckbox(item.value, item.label));
+            });
+        }
+
+        function syncLanguageUtilityOptions() {
+            const clearAll = document.querySelector(`#target-language input[value="${CLEAR_ALL_FILES_VALUE}"]`);
+            const selectAll = document.querySelector(`#target-language input[value="${SELECT_ALL_LANGUAGES_VALUE}"]`);
+            const languageInputs = getTargetLanguageCheckboxes().filter((input) => (
+                input.value !== CLEAR_ALL_FILES_VALUE
+                && input.value !== SELECT_ALL_LANGUAGES_VALUE
+                && input.value !== OTHER_LANGUAGE_VALUE
+            ));
+
+            if (selectAll) {
+                selectAll.checked = languageInputs.length > 0 && languageInputs.every((input) => input.checked);
+            }
+        }
+
+        function handleTargetLanguageChange(event) {
+            const input = event.target;
+            if (!input || input.type !== "checkbox") {
+                return;
+            }
+
+            const clearAllInput = document.querySelector(`#target-language input[value="${CLEAR_ALL_FILES_VALUE}"]`);
+            const languageInputs = getTargetLanguageCheckboxes().filter((checkbox) => (
+                checkbox.value !== CLEAR_ALL_FILES_VALUE
+                && checkbox.value !== SELECT_ALL_LANGUAGES_VALUE
+                && checkbox.value !== OTHER_LANGUAGE_VALUE
+            ));
+            const otherInput = document.querySelector(`#target-language input[value="${OTHER_LANGUAGE_VALUE}"]`);
+
+            if (input.value === CLEAR_ALL_FILES_VALUE) {
+                languageInputs.forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                const selectAllInput = document.querySelector(`#target-language input[value="${SELECT_ALL_LANGUAGES_VALUE}"]`);
+                if (selectAllInput) {
+                    selectAllInput.checked = false;
+                }
+                if (otherInput) {
+                    otherInput.checked = false;
+                }
+            } else if (input.value === SELECT_ALL_LANGUAGES_VALUE) {
+                if (clearAllInput) {
+                    clearAllInput.checked = false;
+                }
+                languageInputs.forEach((checkbox) => {
+                    checkbox.checked = input.checked;
+                });
+            } else if (clearAllInput && input.checked) {
+                clearAllInput.checked = false;
+            }
+
+            syncLanguageUtilityOptions();
+            toggleCustomLanguageForm();
         }
 
         function buildCustomLanguagePayload() {
@@ -750,18 +867,8 @@
                 totalExpectedAgents: Number.isFinite(data.total_expected_agents) ? data.total_expected_agents : null
             };
 
-            const languageSelect = document.getElementById("target-language");
-            languageSelect.innerHTML = "";
-            languages.forEach((item) => {
-                const option = document.createElement("option");
-                option.value = item.value;
-                option.textContent = item.label || labelFromLanguage(item.value);
-                languageSelect.appendChild(option);
-            });
-            const otherOption = document.createElement("option");
-            otherOption.value = OTHER_LANGUAGE_VALUE;
-            otherOption.textContent = "Other";
-            languageSelect.appendChild(otherOption);
+            renderTargetLanguageOptions(languages);
+            syncLanguageUtilityOptions();
             toggleCustomLanguageForm();
 
             const selector = document.getElementById("lab-selector");
@@ -799,9 +906,10 @@
 
         async function submitScan(e) {
             e.preventDefault();
-            const selectedLanguageValues = Array.from(document.getElementById("target-language").selectedOptions)
-                .map((option) => option.value)
-                .filter(Boolean);
+            const checkedValues = getCheckedTargetLanguageValues();
+            const clearAllSelected = checkedValues.includes(CLEAR_ALL_FILES_VALUE);
+            const selectedLanguageValues = getCheckedTargetLanguageValues()
+                .filter((value) => value !== CLEAR_ALL_FILES_VALUE && value !== SELECT_ALL_LANGUAGES_VALUE);
             let selectedLanguages = selectedLanguageValues.filter((x) => x !== OTHER_LANGUAGE_VALUE);
             const scanPath = document.getElementById("scan-path").value.trim();
             const dateStart = document.getElementById("date-start").value;
@@ -821,7 +929,7 @@
                 return;
             }
 
-            if (selectedLanguages.length === 0) {
+            if (!clearAllSelected && selectedLanguages.length === 0) {
                 showAlert("Please select at least one target language", "warning");
                 return;
             }
@@ -846,6 +954,7 @@
                     body: JSON.stringify({
                         target_languages: selectedLanguages,
                         custom_languages: customLanguages,
+                        clear_all: clearAllSelected,
                         scan_path: scanPath,
                         date_filter: {
                             start: dateStart || null,
@@ -861,7 +970,9 @@
                 const resultsDiv = document.getElementById("scan-results");
                 const resultsContent = document.getElementById("results-content");
                 document.getElementById("task-id").value = data.task_id || "";
-                const languagesLabel = selectedLanguages.map(labelFromLanguage).join(", ");
+                const languagesLabel = clearAllSelected
+                    ? "Clear all folders and files"
+                    : selectedLanguages.map(labelFromLanguage).join(", ");
                 resultsContent.innerHTML = `
                     <div class="alert alert-success mb-0">
                         ${data.message}<br>
@@ -871,6 +982,7 @@
                 resultsDiv.style.display = "block";
                 await loadAgents();
                 await loadNextTaskIdPreview();
+                window.location.href = "/verification";
             } catch (error) {
                 showAlert(error.message || "Failed to submit instruction", "danger");
             } finally {
@@ -919,7 +1031,19 @@
         }
 
         function normalizeIp(ip) {
-            return String(ip || '').trim();
+            let value = String(ip || '').trim();
+            if (!value) return '';
+
+            if (value.toLowerCase().startsWith('::ffff:')) {
+                value = value.slice(7).trim();
+            }
+
+            if (value.includes('.') && value.split(':').length === 2) {
+                const [host, port] = value.split(':');
+                if (/^\d+$/.test(port)) value = host.trim();
+            }
+
+            return value;
         }
 
         function getAgentIp(agent) {
@@ -1313,7 +1437,7 @@
             document.getElementById('task-id').value = "";
             applyTheme();
             document.getElementById('scan-form').addEventListener('submit', submitScan);
-            document.getElementById('target-language').addEventListener('change', toggleCustomLanguageForm);
+            document.getElementById('target-language').addEventListener('change', handleTargetLanguageChange);
             document.getElementById('lab-selector').addEventListener('change', renderSelectedView);
             await loadUiConfig();
             await loadNextTaskIdPreview();

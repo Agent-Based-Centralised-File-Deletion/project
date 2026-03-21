@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from datetime import datetime, timezone
 from collections import defaultdict
+import ipaddress
 import logging
 import os
 import re
@@ -87,7 +88,7 @@ def _start_master_thread_if_enabled():
     if _MASTER_THREAD_STARTED:
         return
 
-    if os.getenv("START_MASTER_WITH_UI", "1") != "1":
+    if os.getenv("START_MASTER_WITH_UI", "0") != "1":
         logger.info("START_MASTER_WITH_UI disabled; expecting external backend master.")
         _MASTER_THREAD_STARTED = True
         return
@@ -116,6 +117,30 @@ def _is_online(raw_status: str, last_seen_ts, now_ts: float) -> bool:
         return (now_ts - float(last_seen_ts)) <= AGENT_STALE_SECONDS
     except (TypeError, ValueError):
         return False
+
+
+def _canonical_agent_ip(raw_ip) -> str:
+    value = str(raw_ip or "").strip()
+    if not value:
+        return ""
+
+    # Handle common IPv4-mapped IPv6 representation.
+    if value.lower().startswith("::ffff:"):
+        value = value.split(":", 3)[-1].strip()
+
+    # Handle IPv4 with accidental port suffix.
+    if value.count(":") == 1 and "." in value:
+        host, _, port = value.rpartition(":")
+        if host and port.isdigit():
+            value = host.strip()
+
+    try:
+        parsed = ipaddress.ip_address(value)
+        if isinstance(parsed, ipaddress.IPv6Address) and parsed.ipv4_mapped:
+            return str(parsed.ipv4_mapped)
+        return str(parsed)
+    except ValueError:
+        return value
 
 
 def _infer_languages_from_instruction(instruction: str):
@@ -333,10 +358,11 @@ def submit_instruction():
         instruction = str(data.get("instruction", "")).strip()
         target_languages = data.get("target_languages")
         custom_languages = data.get("custom_languages")
+        clear_all = bool(data.get("clear_all"))
         scan_path = str(data.get("scan_path", "")).strip()
         raw_date_filter = data.get("date_filter")
 
-        if not target_languages:
+        if not target_languages and not clear_all:
             if not instruction:
                 return jsonify({"error": "Instruction cannot be empty"}), 400
             target_languages = _infer_languages_from_instruction(instruction)
@@ -346,6 +372,8 @@ def submit_instruction():
         invalid = [x for x in target_languages if x not in SUPPORTED_LANGUAGES and x not in custom_languages]
         if invalid:
             return jsonify({"error": f"Unsupported languages: {invalid}"}), 400
+        if not clear_all and not target_languages:
+            return jsonify({"error": "At least one target language must be specified"}), 400
         if not scan_path:
             return jsonify({"error": "scan_path is required"}), 400
         if not _is_absolute_path_any_os(scan_path):
@@ -353,8 +381,10 @@ def submit_instruction():
 
         date_filter = None
         if isinstance(raw_date_filter, dict):
-            start = str(raw_date_filter.get("start", "")).strip()
-            end = str(raw_date_filter.get("end", "")).strip()
+            start_raw = raw_date_filter.get("start")
+            end_raw = raw_date_filter.get("end")
+            start = str(start_raw).strip() if start_raw is not None else ""
+            end = str(end_raw).strip() if end_raw is not None else ""
             if start or end:
                 try:
                     date_filter = {}
@@ -374,35 +404,63 @@ def submit_instruction():
             date_filter=date_filter,
             scan_paths=[scan_path],
             custom_languages=custom_languages,
+            clear_all=clear_all,
         )
         active_agents = get_active_agents()
-        if not active_agents:
+        active_agents_by_canonical = {}
+        for raw_ip, info in active_agents.items():
+            canonical_ip = _canonical_agent_ip(raw_ip)
+            if not canonical_ip:
+                continue
+            current = active_agents_by_canonical.get(canonical_ip)
+            if not current or float(info.get("last_seen", 0.0) or 0.0) >= float(current.get("last_seen", 0.0) or 0.0):
+                merged = info.copy()
+                merged["_raw_ip"] = raw_ip
+                active_agents_by_canonical[canonical_ip] = merged
+
+        now_ts = datetime.now(tz=timezone.utc).timestamp()
+        persisted_agents = persistence.list_agents()
+        online_persisted_ips = {
+            _canonical_agent_ip(item.get("agent_ip"))
+            for item in persisted_agents
+            if item.get("agent_ip") and _is_online(item.get("status", ""), item.get("last_seen"), now_ts)
+        }
+        candidate_ips = sorted({ip for ip in (set(active_agents_by_canonical.keys()) | online_persisted_ips) if ip})
+        if not candidate_ips:
             return jsonify({"error": "No active agents available"}), 400
 
         dispatched = 0
+        queued = 0
         failed = []
-        for agent_ip, info in active_agents.items():
+        for agent_ip in candidate_ips:
+            info = active_agents_by_canonical.get(agent_ip) or {}
             conn = info.get("conn")
-            if conn is None:
-                failed.append(agent_ip)
-                continue
+            if conn is not None:
+                try:
+                    send_message(conn, task)
+                    update_status(info.get("_raw_ip", agent_ip), "SCANNING")
+                    dispatched += 1
+                    continue
+                except Exception as e:
+                    logger.error("Failed live dispatch to %s: %s", agent_ip, e)
 
+            # Fallback: queue for backend to send on next heartbeat.
             try:
-                send_message(conn, task)
-                update_status(agent_ip, "SCANNING")
-                dispatched += 1
+                persistence.enqueue_delete_command(agent_ip, task["task_id"], task)
+                queued += 1
             except Exception as e:
                 failed.append(agent_ip)
-                logger.error("Failed dispatch to %s: %s", agent_ip, e)
+                logger.error("Failed queueing scan task for %s: %s", agent_ip, e)
 
-        logger.info("Task %s dispatched to %d agents", task["task_id"], dispatched)
+        logger.info("Task %s dispatched=%d queued=%d", task["task_id"], dispatched, queued)
         return jsonify({
-            "message": f"Instruction dispatched to {dispatched} agent(s)",
+            "message": f"Instruction dispatched to {dispatched} agent(s), queued for {queued} agent(s)",
             "task_id": task["task_id"],
             "target_languages": target_languages,
             "custom_languages": custom_languages,
             "scan_path": scan_path,
             "date_filter": date_filter,
+            "queued_agents": queued,
             "failed_agents": failed
         })
     except ValueError as e:
@@ -417,28 +475,52 @@ def clients_status():
     try:
         status_list = []
         now_ts = datetime.now(tz=timezone.utc).timestamp()
+        merged = {}
 
-        for idx, item in enumerate(persistence.list_agents(), start=1):
-            agent_ip = item.get("agent_ip")
+        for item in persistence.list_agents():
+            raw_ip = item.get("agent_ip")
+            agent_ip = _canonical_agent_ip(raw_ip)
+            if not agent_ip:
+                continue
             raw_status = item.get("status", "OFFLINE")
             last_seen_ts = item.get("last_seen")
-            last_seen = None
-            if last_seen_ts:
-                last_seen = datetime.fromtimestamp(last_seen_ts, tz=timezone.utc).isoformat()
             online = _is_online(raw_status, last_seen_ts, now_ts)
             normalized_raw_status = raw_status if online else "OFFLINE"
 
             # Keep persisted status aligned for stale agents without rewriting last_seen.
-            if not online and str(raw_status).upper() != "OFFLINE":
-                persistence.update_agent_status(agent_ip, "OFFLINE")
+            if raw_ip and not online and str(raw_status).upper() != "OFFLINE":
+                persistence.update_agent_status(raw_ip, "OFFLINE")
+
+            current = merged.get(agent_ip)
+            item_last_seen = float(last_seen_ts or 0.0)
+            if not current:
+                merged[agent_ip] = {
+                    "ip": agent_ip,
+                    "online": online,
+                    "raw_status": normalized_raw_status,
+                    "last_seen_ts": item_last_seen,
+                }
+            else:
+                current["online"] = current["online"] or online
+                if item_last_seen >= current["last_seen_ts"]:
+                    current["last_seen_ts"] = item_last_seen
+                    current["raw_status"] = normalized_raw_status
+
+        for idx, agent_ip in enumerate(sorted(merged.keys()), start=1):
+            rec = merged[agent_ip]
+            last_seen = (
+                datetime.fromtimestamp(rec["last_seen_ts"], tz=timezone.utc).isoformat()
+                if rec["last_seen_ts"]
+                else None
+            )
 
             status_list.append({
                 "id": idx,
                 "name": f"Agent {idx}",
                 "ip": agent_ip,
                 "ip_address": agent_ip,
-                "status": "online" if online else "offline",
-                "raw_status": normalized_raw_status,
+                "status": "online" if rec["online"] else "offline",
+                "raw_status": rec["raw_status"] if rec["online"] else "OFFLINE",
                 "last_seen": last_seen
             })
 
@@ -592,7 +674,6 @@ def approve_deletion():
                     undelivered_agents.append(agent_ip)
 
         delivered = [r for r in selected if r.get("id") in delivered_record_ids]
-        undelivered = [r for r in selected if r.get("id") not in delivered_record_ids]
 
         if delivered:
             _persist_audit_logs(
@@ -609,7 +690,10 @@ def approve_deletion():
                 action="delete_queued",
                 notes="Delete command queued; will dispatch on next agent heartbeat"
             )
+            _remove_records_from_queue(queued_records)
 
+        handled_record_ids = delivered_record_ids | queued_record_ids
+        undelivered = [r for r in selected if r.get("id") not in handled_record_ids]
         if undelivered:
             _persist_audit_logs(
                 undelivered,

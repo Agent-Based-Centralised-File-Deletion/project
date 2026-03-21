@@ -1,5 +1,6 @@
 import os
 import sys
+import ipaddress
 
 try:
     from backend.network.protocol import receive_message, send_message
@@ -9,7 +10,6 @@ try:
         update_status,
         touch
     )
-    from backend.orchestrator.task_dispatcher import dispatch_scan_task
     from backend.orchestrator.result_collector import result_collector
     from shared import persistence
 except ModuleNotFoundError:
@@ -23,7 +23,6 @@ except ModuleNotFoundError:
         update_status,
         touch
     )
-    from orchestrator.task_dispatcher import dispatch_scan_task
     from orchestrator.result_collector import result_collector
     try:
         from shared import persistence
@@ -31,7 +30,7 @@ except ModuleNotFoundError:
         persistence = None
 
 
-def _dispatch_queued_delete_commands(agent_ip, conn):
+def _dispatch_queued_commands(agent_ip, conn):
     if not persistence:
         return
 
@@ -40,19 +39,38 @@ def _dispatch_queued_delete_commands(agent_ip, conn):
     for cmd in commands:
         cmd_id = cmd.get("id")
         payload = cmd.get("payload", {})
-        if payload.get("type") != "delete_approved":
-            payload["type"] = "delete_approved"
         try:
             send_message(conn, payload)
             persistence.mark_delete_command_sent(cmd_id)
-            print(f"[MASTER] Sent queued delete command {cmd_id} -> {agent_ip}")
+            print(f"[MASTER] Sent queued command {cmd_id} ({payload.get('type')}) -> {agent_ip}")
         except Exception as e:
             persistence.mark_delete_command_failed(cmd_id, str(e))
-            print(f"[MASTER] Failed queued delete command {cmd_id} -> {agent_ip}: {e}")
+            print(f"[MASTER] Failed queued command {cmd_id} -> {agent_ip}: {e}")
             break
 
+
+def _resolve_agent_identity(registration: dict, peer_ip: str) -> str:
+    """
+    Prefer client-provided identity when it is a valid IPv4 address.
+    This allows lab layouts to map correctly even when peer_ip is NAT'd.
+    """
+    reg = registration or {}
+    for key in ("local_ip", "client_id"):
+        candidate = str(reg.get(key, "")).strip()
+        if not candidate:
+            continue
+        try:
+            ip = ipaddress.ip_address(candidate)
+            if ip.version == 4:
+                return candidate
+        except ValueError:
+            pass
+    return peer_ip
+
+
 def handle_agent(conn, addr):
-    agent_ip, _ = addr
+    peer_ip, _ = addr
+    agent_ip = peer_ip
 
     try:
         # Receive and validate registration
@@ -60,11 +78,9 @@ def handle_agent(conn, addr):
         if not registration or registration.get("type") != "register":
             raise Exception("Invalid registration message")
 
+        agent_ip = _resolve_agent_identity(registration, peer_ip)
         register_agent(agent_ip, conn, addr)
-        print(f"[MASTER] Agent registered: {agent_ip}")
-
-        # Dispatch initial task after registration
-        dispatch_scan_task(conn, agent_ip)
+        print(f"[MASTER] Agent registered: {agent_ip} (peer: {peer_ip})")
 
         # Listen for incoming messages
         while True:
@@ -98,7 +114,7 @@ def handle_agent(conn, addr):
 
             elif msg_type == "heartbeat":
                 # Keep-alive; no action required
-                _dispatch_queued_delete_commands(agent_ip, conn)
+                _dispatch_queued_commands(agent_ip, conn)
 
             elif msg_type == "deletion_report":
                 task_id = message.get("task_id") or "unknown-task"
@@ -110,7 +126,7 @@ def handle_agent(conn, addr):
                 update_status(agent_ip, "IDLE")
                 ok = sum(1 for r in reports if r.get("status") == "deleted")
                 print(f"[MASTER] Deletion report from {agent_ip} - task {task_id}: {ok}/{len(reports)} deleted")
-                _dispatch_queued_delete_commands(agent_ip, conn)
+                _dispatch_queued_commands(agent_ip, conn)
 
             else:
                 print(f"[MASTER] Unknown message type from {agent_ip}: {msg_type}")
