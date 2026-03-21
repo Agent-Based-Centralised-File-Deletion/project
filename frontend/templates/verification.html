@@ -101,27 +101,17 @@
                             Loading files...
                         </div>
                         <div id="files-container" style="display: none;">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead class="table-dark">
-                                        <tr>
-                                            <th width="50">
-                                                <input type="checkbox" id="select-all" class="form-check-input">
-                                            </th>
-                                            <th><i class="fas fa-file me-1"></i>Filename</th>
-                                            <th><i class="fas fa-folder me-1"></i>Path</th>
-                                            <th><i class="fas fa-server me-1"></i>Agent IP</th>
-                                            <th><i class="fas fa-code me-1"></i>Language</th>
-                                            <th><i class="fas fa-gauge me-1"></i>Confidence</th>
-                                            <th><i class="fas fa-note-sticky me-1"></i>Reason</th>
-                                            <th><i class="fas fa-calendar me-1"></i>Created</th>
-                                            <th><i class="fas fa-info-circle me-1"></i>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="files-table">
-                                        <!-- Files will be loaded here -->
-                                    </tbody>
-                                </table>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="text-muted small">
+                                    Pending items are grouped by agent IP for faster review.
+                                </div>
+                                <div class="form-check mb-0">
+                                    <input type="checkbox" id="select-all" class="form-check-input">
+                                    <label class="form-check-label" for="select-all">Select all visible</label>
+                                </div>
+                            </div>
+                            <div id="files-table">
+                                <!-- Agent groups will be loaded here -->
                             </div>
                         </div>
                         <div id="no-files-message" class="text-center py-5 text-muted" style="display: none;">
@@ -260,11 +250,11 @@
         }
 
         function renderFiles(files) {
-            const tbody = document.getElementById('files-table');
+            const containerEl = document.getElementById('files-table');
             const noFilesMsg = document.getElementById('no-files-message');
             const container = document.getElementById('files-container');
 
-            tbody.innerHTML = '';
+            containerEl.innerHTML = '';
 
             if (files.length === 0) {
                 container.style.display = 'none';
@@ -275,49 +265,120 @@
             noFilesMsg.style.display = 'none';
             container.style.display = 'block';
 
-            files.forEach((file, index) => {
-                const tr = document.createElement('tr');
-                tr.className = 'fade-in';
-                tr.style.animationDelay = `${index * 0.05}s`;
+            const groupedFiles = groupFilesByAgent(files);
+            Object.entries(groupedFiles).forEach(([agentIp, agentFiles], groupIndex) => {
+                const groupCard = document.createElement('div');
+                groupCard.className = 'card mb-3 fade-in';
+                groupCard.style.animationDelay = `${groupIndex * 0.05}s`;
 
-                const createdDate = file.created_at ? new Date(file.created_at).toLocaleString() : 'N/A';
-                const statusClass = `status-${file.status}`;
-
-                tr.innerHTML = `
-                    <td>
-                        <input type="checkbox" class="file-checkbox form-check-input" value="${file.id}">
-                    </td>
-                    <td>
-                        <strong>${file.filename}</strong>
-                    </td>
-                    <td>
-                        <small class="text-muted">${file.path}</small>
-                    </td>
-                    <td>
-                        <code>${file.agent_ip}</code>
-                    </td>
-                    <td>
-                        <span class="badge bg-info text-dark">${(file.language || 'unknown').toUpperCase()}</span>
-                    </td>
-                    <td>
-                        <small>${typeof file.confidence === 'number' ? file.confidence.toFixed(2) : 'N/A'}</small>
-                    </td>
-                    <td title="${file.reason || ''}">
-                        <small class="text-muted">${(file.reason || '').slice(0, 90)}</small>
-                    </td>
-                    <td>
-                        <small>${createdDate}</small>
-                    </td>
-                    <td>
-                        <span class="badge ${statusClass} status-badge">
-                            <i class="fas fa-clock me-1"></i>${file.status.toUpperCase()}
-                        </span>
-                    </td>
+                groupCard.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="fas fa-server me-2"></i><code>${agentIp}</code></strong>
+                            <span class="badge bg-primary ms-2">${agentFiles.length} item(s)</span>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm" type="button" onclick="toggleAgentSelection('${agentIp.replace(/'/g, "\\'")}')">
+                            Select Agent
+                        </button>
+                    </div>
                 `;
-                tbody.appendChild(tr);
+
+                const body = document.createElement('div');
+                body.className = 'card-body p-0';
+
+                const tableWrapper = document.createElement('div');
+                tableWrapper.className = 'table-responsive';
+
+                const table = document.createElement('table');
+                table.className = 'table table-hover mb-0';
+                table.innerHTML = `
+                    <thead class="table-dark">
+                        <tr>
+                            <th width="50"></th>
+                            <th><i class="fas fa-file me-1"></i>Filename</th>
+                            <th><i class="fas fa-folder me-1"></i>Path</th>
+                            <th><i class="fas fa-code me-1"></i>Language</th>
+                            <th><i class="fas fa-gauge me-1"></i>Confidence</th>
+                            <th><i class="fas fa-note-sticky me-1"></i>Reason</th>
+                            <th><i class="fas fa-calendar me-1"></i>Created</th>
+                            <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                        </tr>
+                    </thead>
+                `;
+
+                const tbody = document.createElement('tbody');
+                agentFiles.forEach((file) => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.agentIp = file.agent_ip || 'Unknown agent';
+
+                    const createdDate = file.created_at ? new Date(file.created_at).toLocaleString() : 'N/A';
+                    const statusClass = `status-${file.status}`;
+
+                    tr.innerHTML = `
+                        <td>
+                            <input type="checkbox" class="file-checkbox form-check-input" value="${file.id}" data-agent-ip="${file.agent_ip || ''}">
+                        </td>
+                        <td>
+                            <strong>${file.filename}</strong>
+                        </td>
+                        <td>
+                            <small class="text-muted">${file.path}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">${(file.language || 'unknown').toUpperCase()}</span>
+                        </td>
+                        <td>
+                            <small>${typeof file.confidence === 'number' ? file.confidence.toFixed(2) : 'N/A'}</small>
+                        </td>
+                        <td title="${file.reason || ''}">
+                            <small class="text-muted">${(file.reason || '').slice(0, 90)}</small>
+                        </td>
+                        <td>
+                            <small>${createdDate}</small>
+                        </td>
+                        <td>
+                            <span class="badge ${statusClass} status-badge">
+                                <i class="fas fa-clock me-1"></i>${file.status.toUpperCase()}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                tableWrapper.appendChild(table);
+                body.appendChild(tableWrapper);
+                groupCard.appendChild(body);
+                containerEl.appendChild(groupCard);
             });
 
             updateSelectAllCheckbox();
+        }
+
+        function groupFilesByAgent(files) {
+            return files.reduce((groups, file) => {
+                const key = file.agent_ip || 'Unknown agent';
+                if (!groups[key]) {
+                    groups[key] = [];
+                }
+                groups[key].push(file);
+                return groups;
+            }, {});
+        }
+
+        function toggleAgentSelection(agentIp) {
+            const escaped = agentIp.replace(/"/g, '\\"');
+            const checkboxes = document.querySelectorAll(`.file-checkbox[data-agent-ip="${escaped}"]`);
+            if (checkboxes.length === 0) {
+                return;
+            }
+
+            const allChecked = Array.from(checkboxes).every((cb) => cb.checked);
+            checkboxes.forEach((cb) => {
+                cb.checked = !allChecked;
+            });
+            updateSelectAllCheckbox();
+            updateSelectedCount();
         }
 
         function updateSelectAllCheckbox() {

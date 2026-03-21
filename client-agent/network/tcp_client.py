@@ -17,6 +17,15 @@ class MasterCommunicator:
         self.client_id = client_id
         self.socket = None
         self.connected = False
+
+    def _detect_local_ip(self) -> str:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.connect((self.master_ip, self.master_port))
+                ip = probe.getsockname()[0]
+                return ip or ""
+        except Exception:
+            return ""
     
     def connect(self) -> bool:
         """Connect to master node"""
@@ -29,6 +38,7 @@ class MasterCommunicator:
             self._send_message({
                 'type': 'register',
                 'client_id': self.client_id,
+                'local_ip': self._detect_local_ip(),
                 'timestamp': datetime.now().isoformat()
             })
             
