@@ -1,3 +1,5 @@
+import shared.transport
+import shared.session
 import os
 import sys
 
