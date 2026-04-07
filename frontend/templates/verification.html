@@ -177,6 +177,52 @@
                         </button>
                     </div>
                     <div class="card-body">
+                        <div class="audit-filter-bar mb-3">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="audit-agent-filter" class="form-label mb-1">Agent</label>
+                                    <select id="audit-agent-filter" class="form-select">
+                                        <option value="">All agents</option>
+                                    </select>
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    <label for="audit-date-from" class="form-label mb-1">From Date</label>
+                                    <input type="date" id="audit-date-from" class="form-control">
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    <label for="audit-date-to" class="form-label mb-1">To Date</label>
+                                    <input type="date" id="audit-date-to" class="form-control">
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    <label for="audit-load-size" class="form-label mb-1">Load</label>
+                                    <select id="audit-load-size" class="form-select">
+                                        <option value="20" selected>20</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                                <div class="col-lg-3 col-md-12 d-flex gap-2">
+                                    <button class="btn btn-outline-primary w-100" onclick="applyAuditFilters(true)">
+                                        <i class="fas fa-filter me-1"></i>Apply
+                                    </button>
+                                    <button class="btn btn-outline-secondary w-100" onclick="clearAuditView()">
+                                        <i class="fas fa-eraser me-1"></i>Clear Visible
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-2">Clear Visible hides only the currently shown rows in this UI view.</small>
+                        </div>
+                        <div class="audit-table-meta d-flex justify-content-between align-items-center mb-2">
+                            <small id="audit-results-info" class="text-muted">Showing 0 of 0 logs</small>
+                            <div class="d-flex gap-2">
+                                <button id="audit-prev-btn" class="btn btn-outline-secondary btn-sm" onclick="changeAuditPage(-1)">
+                                    <i class="fas fa-chevron-left me-1"></i>Prev
+                                </button>
+                                <button id="audit-next-btn" class="btn btn-outline-secondary btn-sm" onclick="changeAuditPage(1)">
+                                    Next<i class="fas fa-chevron-right ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead class="table-dark">
@@ -213,6 +259,9 @@
         let currentSearch = '';
         let allFiles = [];
         let auditLogs = [];
+        let filteredAuditLogs = [];
+        let auditPage = 1;
+        let auditPageSize = 20;
 
         function loadFiles(search = '') {
             const loading = document.getElementById('files-loading');
@@ -517,31 +566,142 @@
         }
 
         function loadAuditLogs() {
-            fetch('/audit-logs?limit=100')
+            fetch('/audit-logs?limit=1000')
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
                         console.error('Error loading audit logs:', data.error);
                         return;
                     }
-                    auditLogs = data;
-                    renderAuditLogs(data);
+                    auditLogs = Array.isArray(data) ? data : [];
+                    populateAuditAgentFilter();
+                    applyAuditFilters(true);
                 })
                 .catch(error => {
                     console.error('Error loading audit logs:', error);
                 });
         }
 
-        function renderAuditLogs(logs) {
-            const tbody = document.getElementById('audit-table');
-            tbody.innerHTML = '';
+        function populateAuditAgentFilter() {
+            const select = document.getElementById('audit-agent-filter');
+            const currentValue = select.value;
+            const uniqueAgents = [...new Set(auditLogs.map((log) => log.agent_ip).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-            if (!logs || logs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No audit records yet.</td></tr>';
+            select.innerHTML = '<option value="">All agents</option>';
+            uniqueAgents.forEach((agentIp) => {
+                const option = document.createElement('option');
+                option.value = agentIp;
+                option.textContent = agentIp;
+                select.appendChild(option);
+            });
+
+            if (currentValue && uniqueAgents.includes(currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
+        function applyAuditFilters(resetPage = false) {
+            const selectedAgent = document.getElementById('audit-agent-filter').value.trim();
+            const fromDateRaw = document.getElementById('audit-date-from').value;
+            const toDateRaw = document.getElementById('audit-date-to').value;
+
+            if (resetPage) {
+                auditPage = 1;
+            }
+
+            auditPageSize = Number.parseInt(document.getElementById('audit-load-size').value, 10) || 20;
+            const fromDate = fromDateRaw ? new Date(`${fromDateRaw}T00:00:00`) : null;
+            const toDate = toDateRaw ? new Date(`${toDateRaw}T23:59:59.999`) : null;
+            if (fromDate && toDate && fromDate > toDate) {
+                showAlert('From Date cannot be later than To Date.', 'warning');
                 return;
             }
 
-            logs.forEach(log => {
+            filteredAuditLogs = auditLogs.filter((log) => {
+                if (selectedAgent && (log.agent_ip || '') !== selectedAgent) {
+                    return false;
+                }
+
+                if (!fromDate && !toDate) {
+                    return true;
+                }
+
+                if (!log.created_at) {
+                    return false;
+                }
+
+                const logDate = new Date(log.created_at);
+                if (Number.isNaN(logDate.getTime())) {
+                    return false;
+                }
+
+                if (fromDate && logDate < fromDate) {
+                    return false;
+                }
+                if (toDate && logDate > toDate) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            const totalPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));
+            if (auditPage > totalPages) {
+                auditPage = totalPages;
+            }
+
+            renderAuditLogs();
+        }
+
+        function clearAuditView() {
+            if (!filteredAuditLogs || filteredAuditLogs.length === 0) {
+                showAlert('No visible logs to clear.', 'info');
+                return;
+            }
+
+            const start = (auditPage - 1) * auditPageSize;
+            const end = start + auditPageSize;
+            const visiblePageLogs = filteredAuditLogs.slice(start, end);
+            const visibleIds = new Set(visiblePageLogs.map((log) => String(log.id)));
+            auditLogs = auditLogs.filter((log) => !visibleIds.has(String(log.id)));
+
+            applyAuditFilters(false);
+            showAlert('Visible logs cleared from UI only. Use Refresh to load them again.', 'info');
+        }
+
+        function changeAuditPage(direction) {
+            const totalPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));
+            const nextPage = auditPage + direction;
+
+            if (nextPage < 1 || nextPage > totalPages) {
+                return;
+            }
+            auditPage = nextPage;
+            renderAuditLogs();
+        }
+
+        function renderAuditLogs() {
+            const tbody = document.getElementById('audit-table');
+            const info = document.getElementById('audit-results-info');
+            const prevBtn = document.getElementById('audit-prev-btn');
+            const nextBtn = document.getElementById('audit-next-btn');
+            tbody.innerHTML = '';
+
+            if (!filteredAuditLogs || filteredAuditLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No audit records yet.</td></tr>';
+                info.textContent = 'Showing 0 of 0 logs';
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                return;
+            }
+
+            const start = (auditPage - 1) * auditPageSize;
+            const end = start + auditPageSize;
+            const pageLogs = filteredAuditLogs.slice(start, end);
+            const totalPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));
+
+            pageLogs.forEach(log => {
                 const tr = document.createElement('tr');
                 const ts = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
                 tr.innerHTML = `
@@ -554,6 +714,10 @@
                 `;
                 tbody.appendChild(tr);
             });
+
+            info.textContent = `Showing ${pageLogs.length} of ${filteredAuditLogs.length} logs (page ${auditPage}/${totalPages})`;
+            prevBtn.disabled = auditPage <= 1;
+            nextBtn.disabled = auditPage >= totalPages;
         }
 
         // Search on Enter key
@@ -562,6 +726,10 @@
                 searchFiles();
             }
         });
+        document.getElementById('audit-agent-filter').addEventListener('change', () => applyAuditFilters(true));
+        document.getElementById('audit-date-from').addEventListener('change', () => applyAuditFilters(true));
+        document.getElementById('audit-date-to').addEventListener('change', () => applyAuditFilters(true));
+        document.getElementById('audit-load-size').addEventListener('change', () => applyAuditFilters(true));
 
         // Theme toggle functionality
         const themeToggle = document.getElementById('theme-toggle');
